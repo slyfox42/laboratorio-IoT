@@ -1,4 +1,5 @@
 #include <math.h>
+#include <PDM.h>
 
 #define FAN_PIN A1
 #define LED_PIN A2
@@ -11,10 +12,13 @@
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
+const int soundThreshold = 500; // sound of snapping finger
 int pirState = LOW;
 int people = 0;
-int timeout_pir = 5000;
+int timeoutPir = 5000;
 int detectedTime = -1;
+short sampleBuffer[256];
+volatile int samplesRead;
 
 
 void setup() {
@@ -22,7 +26,12 @@ void setup() {
   Serial.begin(9600);
 
   pinMode(FAN_PIN, OUTPUT);
+  PDM.onReceive(onPDMdata);
 
+  if (!PDM.begin(1, 16000)) {
+    Serial.println("Failed to start PDM");
+    while(1);
+  }
 }
 
 // code for grove temp sensor to acquire and convert temperature to Celsius
@@ -40,11 +49,12 @@ int readTemp(int pin) {
   return temperature;
 }
 
+// check motion using the PIR sensor
 int checkPresence() {
   int val = digitalRead(PIR_PIN); 
 
   if (people > 0 && pirState == LOW &&
-      millis() - detectedTime >= (timeout_pir)) {
+      millis() - detectedTime >= (timeoutPir)) {
         people = 0;
   }
 
@@ -61,6 +71,31 @@ int checkPresence() {
       detectedTime = millis();
       pirState = LOW;
     }
+  }
+}
+
+// callback function for microphone 
+void onPDMdata() {
+  // Query the number of available bytes
+  int bytesAvailable = PDM.available();
+
+  // Read into the sample buffer
+  PDM.read(sampleBuffer, bytesAvailable);
+
+  // 16-bit, 2 bytes per sample
+  samplesRead = bytesAvailable / 2;
+}
+
+void checkSound() {
+  if (samplesRead) {
+    for (int i = 0; i < samplesRead; i++) {
+      // if (sampleBuffer[i]>=soundThreshold){
+      if (sampleBuffer[i] > 5000 || sampleBuffer[i] <= -5000){
+        Serial.println("Sound detected");
+      }
+    }
+    // clear the read count
+    samplesRead = 0;
   }
 }
 
@@ -93,15 +128,15 @@ void loop() {
     }
   }
   // analogWrite(FAN_PIN, speed);
-  Serial.print("Speed: ");
-  Serial.println(speed);
-  Serial.print("Brightness: ");
-  Serial.println(brightness);
+  // Serial.print("Speed: ");
+  // Serial.println(speed);
+  // Serial.print("Brightness: ");
+  // Serial.println(brightness);
 
-  checkPresence();
-  Serial.print("People: ");
-  Serial.println(people);
-
-  delay(1000);
+  // checkPresence();
+  // Serial.print("People: ");
+  // Serial.println(people);
+  checkSound();
+  delay(3000);
 
 }
