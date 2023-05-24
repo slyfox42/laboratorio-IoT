@@ -2,6 +2,7 @@
 
 #define FAN_PIN A1
 #define LED_PIN A2
+#define PIR_PIN A3
 #define pinTempSensor A0 
 #define minTempL 25
 #define maxTempL 35
@@ -10,6 +11,10 @@
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
+int pirState = LOW;
+int people = 0;
+int timeout_pir = 5000;
+int detectedTime = -1;
 
 
 void setup() {
@@ -35,6 +40,30 @@ int readTemp(int pin) {
   return temperature;
 }
 
+int checkPresence() {
+  int val = digitalRead(PIR_PIN); 
+
+  if (people > 0 && pirState == LOW &&
+      millis() - detectedTime >= (timeout_pir)) {
+        people = 0;
+  }
+
+  if (val == HIGH) {	// check if the input is HIGH   
+    if (pirState == LOW) {
+      Serial.println("Motion detected!");	// print on output change
+      pirState = HIGH;
+      people += 1;
+    }
+  } 
+  else {
+    if (pirState == HIGH) {
+      Serial.println("Motion ended!");	// print on output change
+      detectedTime = millis();
+      pirState = LOW;
+    }
+  }
+}
+
 void loop() {
 
   float speed = 0;
@@ -43,7 +72,7 @@ void loop() {
   int temperature = readTemp(pinTempSensor);
 
   delay(100);
-  // Lampadina accesa rispetto alla temperatura
+  // Set Led Brightness proportional to temperature
   if(temperature > minTempL){
     if(temperature >= maxTempL){
       brightness = 0;
@@ -54,6 +83,7 @@ void loop() {
   }
   analogWrite(LED_PIN, brightness);
   
+  // Set Fan Speed proportional to temperature
   if(temperature >= minTempF){
     if(temperature > maxTempF){
       speed = 255;
@@ -68,6 +98,10 @@ void loop() {
   Serial.print("Brightness: ");
   Serial.println(brightness);
 
-  delay(2000);
+  checkPresence();
+  Serial.print("People: ");
+  Serial.println(people);
+
+  delay(1000);
 
 }
