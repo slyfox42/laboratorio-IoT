@@ -1,9 +1,12 @@
 #include <math.h>
 
 #define FAN_PIN A1
+#define LED_PIN A2
 #define pinTempSensor A0 
-#define minTemp 25
-#define maxTemp 35 // TODO: 
+#define minTempL 25
+#define maxTempL 35
+#define minTempF 25
+#define maxTempF 35
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
@@ -35,21 +38,35 @@ int readTemp(int pin) {
 void loop() {
 
   float speed = 0;
+  float brightness = 255;
 
   int temperature = readTemp(pinTempSensor);
 
   delay(100);
+  // Lampadina accesa rispetto alla temperatura
+  if(temperature > minTempL){
+    if(temperature >= maxTempL){
+      brightness = 0;
+    }
+    else{
+      brightness = 255 - (maxTempL - temperature)*30;
+    }
+  }
+  analogWrite(LED_PIN, brightness);
   
-  if(temperature >= minTemp){
-    if(temperature > maxTemp){
+  if(temperature >= minTempF){
+    if(temperature > maxTempF){
       speed = 255;
     }
     else{
-      speed = 255 - (maxTemp - temperature)*20;
+      speed = 255 - (maxTempF - temperature)*20;
     }
   }
   // analogWrite(FAN_PIN, speed);
+  Serial.print("Speed: ");
   Serial.println(speed);
+  Serial.print("Brightness: ");
+  Serial.println(brightness);
 
   delay(2000);
 
