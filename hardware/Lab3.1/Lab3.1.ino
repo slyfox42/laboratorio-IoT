@@ -4,10 +4,12 @@
 #include "arduino_secrets.h"
 
 #define pinTempSensor A0 
+#define ledPin A2
 
 WiFiServer server(80);            //server socket
 int status = WL_IDLE_STATUS;      //connection status
-int ledPin = 2; // modificare il led PIN
+const int R0 = 100000;   // needed for temperature conversion
+const int B = 4275;            // B value of the thermistor
 
 WiFiClient client = server.available();
 
@@ -17,7 +19,7 @@ DynamicJsonDocument jsonResponse(capacity);
 
 void setup() {
   Serial.begin(9600);
-  // pinMode(ledPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
   while (!Serial);
   
   enable_WiFi();
@@ -69,7 +71,6 @@ void enable_WiFi() {
   }
 }
 
-
 void connect_WiFi() {
   // attempt to connect to Wifi network:
   while (status != WL_CONNECTED) {
@@ -82,6 +83,7 @@ void connect_WiFi() {
   }
 }
 
+// read temperature using the temp sensor
 int readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
@@ -93,6 +95,7 @@ int readTemp(int pin) {
   return temperature;
 }
 
+// process incoming requests to the arduino
 void process(WiFiClient client) {
   String output;
   String reqType = client.readStringUntil(' ');
@@ -100,40 +103,41 @@ void process(WiFiClient client) {
   String url = client.readStringUntil(' ');
   url.trim();
 
-  if (url.startsWith("/led/")) { // TODO: implement more robust check
-    
-    char ledValue = url.charAt(5);
+  if (url.startsWith("/led/")) { 
+      // TODO: implement more robust check
+    String ledValue = url.substring(5);
     if (ledValue == "0" || ledValue == "1") {
       int intValue = ledValue.toInt();
-      digitalWrite(LED_PIN, intValue); // turn the led on or off
+      digitalWrite(ledPin, intValue); // turn the led on or off
 
       jsonResponse.clear(); // reset json object
       jsonResponse["bn"] =  "ArduinoGroupX";
       jsonResponse["e"][0]["t"] = int(millis()/1000);
-      jsonResponse["e"][0]["n"] = "led" // selected option
-      jsonResponse["e"][0]["v"] = ledValue // value
+      jsonResponse["e"][0]["n"] = "led"; // selected option
+      jsonResponse["e"][0]["v"] = ledValue; // value
       jsonResponse["e"][0]["u"] = NULL; // no unit of measurement here
       serializeJson(jsonResponse, output);
       printResponse(client, 200, output);
+
     } else {
       printResponse(client, 400, "Invalid led value.");
     }
-    Serial.print("Led value: ");
-    Serial.println(ledValue);
+
   } else if (url.startsWith("/temperature")) {
-    int temperature = readTemp(pinTempSensor);
-    
+      int temperature = readTemp(pinTempSensor);
+      jsonResponse.clear(); // reset json object
+      jsonResponse["bn"] =  "ArduinoGroupX";
+      jsonResponse["e"][0]["t"] = int(millis()/1000);
+      jsonResponse["e"][0]["n"] = "temperature"; // selected option
+      jsonResponse["e"][0]["v"] = temperature; // value
+      jsonResponse["e"][0]["u"] = "Cel"; // no unit of measurement here
   } else {
     printResponse(client, 404, "Not found.");
   }
 
-  Serial.print("url: ");
-  Serial.println(url);
-
-  Serial.print("request type: ");
-  Serial.println(reqType);  
 }
 
+// print message response with code and body
 void printResponse(WiFiClient client, int code, String body) {
   client.println("HTTP/1.1 " + String(code));
   if (code == 200) {
