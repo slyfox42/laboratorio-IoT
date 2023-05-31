@@ -3,12 +3,17 @@
 #include <ArduinoJson.h>
 #include "arduino_secrets.h"
 
-int status = WL_IDLE_STATUS;      //connection status
+#define pinTempSensor A0 
+
 WiFiServer server(80);            //server socket
+int status = WL_IDLE_STATUS;      //connection status
+int ledPin = 2; // modificare il led PIN
 
 WiFiClient client = server.available();
 
-int ledPin = 2; // modificare il led PIN
+// calculate json object ram allocation + declare json response empty object
+const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
+DynamicJsonDocument jsonResponse(capacity);
 
 void setup() {
   Serial.begin(9600);
@@ -24,12 +29,11 @@ void setup() {
 }
 
 void loop() {
-  Serial.println(ssid);
   client = server.available();
 
   delay(1000);
   if (client) {
-    Serial.print("client available");
+    process(client);
   }
 }
 
@@ -75,5 +79,68 @@ void connect_WiFi() {
 
     // wait 10 seconds for connection:
     delay(10000);
+  }
+}
+
+int readTemp(int pin) {
+  int a = analogRead(pinTempSensor);
+
+  float R = 1023.0/a-1.0;
+  R = R0*R;
+
+  float temperature = 1.0/(log(R/R0)/B+1/298.15)-273.15; // convert to temperature via datasheet
+  
+  return temperature;
+}
+
+void process(WiFiClient client) {
+  String output;
+  String reqType = client.readStringUntil(' ');
+  reqType.trim();
+  String url = client.readStringUntil(' ');
+  url.trim();
+
+  if (url.startsWith("/led/")) { // TODO: implement more robust check
+    
+    char ledValue = url.charAt(5);
+    if (ledValue == "0" || ledValue == "1") {
+      int intValue = ledValue.toInt();
+      digitalWrite(LED_PIN, intValue); // turn the led on or off
+
+      jsonResponse.clear(); // reset json object
+      jsonResponse["bn"] =  "ArduinoGroupX";
+      jsonResponse["e"][0]["t"] = int(millis()/1000);
+      jsonResponse["e"][0]["n"] = "led" // selected option
+      jsonResponse["e"][0]["v"] = ledValue // value
+      jsonResponse["e"][0]["u"] = NULL; // no unit of measurement here
+      serializeJson(jsonResponse, output);
+      printResponse(client, 200, output);
+    } else {
+      printResponse(client, 400, "Invalid led value.");
+    }
+    Serial.print("Led value: ");
+    Serial.println(ledValue);
+  } else if (url.startsWith("/temperature")) {
+    int temperature = readTemp(pinTempSensor);
+    
+  } else {
+    printResponse(client, 404, "Not found.");
+  }
+
+  Serial.print("url: ");
+  Serial.println(url);
+
+  Serial.print("request type: ");
+  Serial.println(reqType);  
+}
+
+void printResponse(WiFiClient client, int code, String body) {
+  client.println("HTTP/1.1 " + String(code));
+  if (code == 200) {
+    client.println("Content-type: application/json; charset=utf-8");
+    client.println();
+    client.println(body);
+  } else {
+    client.println();
   }
 }
