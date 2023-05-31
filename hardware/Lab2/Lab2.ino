@@ -12,13 +12,19 @@
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
-const int soundThreshold = 500; // sound of snapping finger
+const int soundThreshold = 200; // sound of snapping finger
+const int soundInterval = 10000; //timeout for Microphone
+const int nSoundEvents = 10;    //number of events for check a person in soundInterval
+const int timeoutPir = 5000;          //timeout for PIR sensor
 int pirState = LOW;
-int people = 0;
-int timeoutPir = 5000;
+int people = 0;       //flag for people using PIR sensor
+int soundPeople = 0;  //flag for people using microphone
+int nSoundDetected = 0;
 int detectedTime = -1;
+int soundDetectedTime = -1;
 short sampleBuffer[256];
 volatile int samplesRead;
+
 
 
 void setup() {
@@ -89,13 +95,29 @@ void onPDMdata() {
 void checkSound() {
   if (samplesRead) {
     for (int i = 0; i < samplesRead; i++) {
-      // if (sampleBuffer[i]>=soundThreshold){
-      if (sampleBuffer[i] > 5000 || sampleBuffer[i] <= -5000){
-        Serial.println("Sound detected");
+      if (sampleBuffer[i]>=soundThreshold){
+        Serial.println("Sound detected");     //debug for detected sound
+        //Serial.println(sampleBuffer[i]);    //volume of sound detected
+        nSoundDetected += 1;
       }
-    }
     // clear the read count
     samplesRead = 0;
+    }
+  }
+  if (soundPeople == 0 && nSoundDetected >= nSoundEvents){     //no people yet detected from mic, but min number of event detected
+      //Serial.println("People detected by microphone");
+      soundPeople += 1;
+      soundDetectedTime = millis();                            //timestamp
+    }
+  else if (soundPeople == 1 && nSoundDetected > nSoundEvents){  //people detected and another sound detected
+    //Serial.println("People made another sound")
+    soundDetectedTime = millis();                               //timestamp
+    nSoundDetected = nSoundEvents;                              //counter back to nSoundEvents
+  }
+  if (nSoundDetected > 0 && millis() - detectedTime >= (soundInterval)) {   //no sounds detected for soundInterval
+        //Serial.println("Sounds not detected for a long time");
+        soundPeople = 0;
+        nSoundDetected = 0;
   }
 }
 
