@@ -10,6 +10,11 @@
 #define minTempF 25
 #define maxTempF 35
 
+#define minTempLP 22
+#define maxTempLP 32
+#define minTempFP 22
+#define maxTempFP 32
+
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
 const int soundThreshold = 200; // sound of snapping finger
@@ -17,14 +22,18 @@ const int soundInterval = 10000; //timeout for Microphone
 const int nSoundEvents = 10;    //number of events for check a person in soundInterval
 const int timeoutPir = 5000;          //timeout for PIR sensor
 int pirState = LOW;
-int people = 0;       //flag for people using PIR sensor
+int motionPeople = 0;       //flag for people using PIR sensor
 int soundPeople = 0;  //flag for people using microphone
+int people = 0;       //general flag for people
 int nSoundDetected = 0;
 int detectedTime = -1;
 int soundDetectedTime = -1;
 short sampleBuffer[256];
 volatile int samplesRead;
-
+int minTempLED = minTempL;
+int maxTempLED = maxTempL;
+int minTempFan = minTempF;
+int maxTempFan = maxTempF;
 
 
 void setup() {
@@ -59,16 +68,16 @@ int readTemp(int pin) {
 int checkPresence() {
   int val = digitalRead(PIR_PIN); 
 
-  if (people > 0 && pirState == LOW &&
+  if (motionPeople > 0 && pirState == LOW &&
       millis() - detectedTime >= (timeoutPir)) {
-        people = 0;
+        motionPeople = 0;
   }
 
   if (val == HIGH) {	// check if the input is HIGH   
     if (pirState == LOW) {
       Serial.println("Motion detected!");	// print on output change
       pirState = HIGH;
-      people += 1;
+      motionPeople += 1;
     }
   } 
   else {
@@ -130,23 +139,23 @@ void loop() {
 
   delay(100);
   // Set Led Brightness proportional to temperature
-  if(temperature > minTempL){
-    if(temperature >= maxTempL){
+  if(temperature > minTempLED){
+    if(temperature >= maxTempLED){
       brightness = 0;
     }
     else{
-      brightness = 255 - (maxTempL - temperature)*30;
+      brightness = 255 - (maxTempLED - temperature)*30;
     }
   }
   analogWrite(LED_PIN, brightness);
   
   // Set Fan Speed proportional to temperature
-  if(temperature >= minTempF){
-    if(temperature > maxTempF){
+  if(temperature >= minTempFan){
+    if(temperature > maxTempFan){
       speed = 255;
     }
     else{
-      speed = 255 - (maxTempF - temperature)*20;
+      speed = 255 - (maxTempFan - temperature)*20;
     }
   }
   // analogWrite(FAN_PIN, speed);
@@ -158,7 +167,21 @@ void loop() {
   // checkPresence();
   // Serial.print("People: ");
   // Serial.println(people);
-  checkSound();
+  //checkSound();
+  if(motionPeople > 0 || soundPeople > 0){  //people detected from sensors
+    people = 1;
+    minTempLED = minTempLP;
+    maxTempLED = maxTempLP;
+    minTempFan = minTempFP;
+    maxTempFan = maxTempFP;
+  }
+  else {                                    //people not detected from sensors
+    people = 0;
+    minTempLED = minTempL;
+    maxTempLED = maxTempL;
+    minTempFan = minTempF;
+    maxTempFan = maxTempF;
+  }
   delay(3000);
 
 }
