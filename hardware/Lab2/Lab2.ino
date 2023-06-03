@@ -1,5 +1,6 @@
 #include <math.h>
 #include <PDM.h>
+#include <LiquidCrystal_PCF8574.h>
 
 #define FAN_PIN A1
 #define LED_PIN A2
@@ -35,6 +36,7 @@ int maxTempLED = maxTempL;
 int minTempFan = minTempF;
 int maxTempFan = maxTempF;
 
+LiquidCrystal_PCF8574 lcd(0x27);
 
 void setup() {
 
@@ -47,6 +49,12 @@ void setup() {
     Serial.println("Failed to start PDM");
     while(1);
   }
+
+  lcd.begin(16, 2);
+  lcd.setBacklight(255);
+  lcd.home();
+  lcd.clear();
+  lcd.print("Working");
 }
 
 // code for grove temp sensor to acquire and convert temperature to Celsius
