@@ -182,7 +182,7 @@ void loop() {
 
 
   float speed = 0;
-  float brightness = 255;
+  float brightness = 0;
 
   checkPresent();
 
@@ -191,12 +191,12 @@ void loop() {
 
   delay(100);
   // Set Led Brightness proportional to temperature
-  if(temperature > minTempLED){
-    if(temperature >= maxTempLED){
-      brightness = 0;
+  if(temperature < maxTempLED){
+    if(temperature <= minTempLED){
+      brightness = 255;
     }
     else{
-      brightness = 255 - (maxTempLED - temperature) * 30;
+      brightness = 255 * (maxTempLED - temperature)/10;
     }
   }
   analogWrite(LED_PIN, brightness);
@@ -207,7 +207,7 @@ void loop() {
       speed = 255;
     }
     else{
-      speed = 255 - (maxTempFan - temperature)*20;
+      speed = 255 * (temperature - minTempFan)/10;
     }
   }
   // analogWrite(FAN_PIN, speed);
