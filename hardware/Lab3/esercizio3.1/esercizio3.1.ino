@@ -102,7 +102,8 @@ void process(WiFiClient client) {
   reqType.trim();
   String url = client.readStringUntil(' ');
   url.trim();
-
+  Serial.print("Url: ");
+  Serial.println(url);
   if (url.startsWith("/led/")) { 
       // TODO: implement more robust check
     String ledValue = url.substring(5);
@@ -124,6 +125,7 @@ void process(WiFiClient client) {
     }
 
   } else if (url.startsWith("/temperature")) {
+      Serial.println("HERE!!");
       int temperature = readTemp(pinTempSensor);
       jsonResponse.clear(); // reset json object
       jsonResponse["bn"] =  "ArduinoGroupX";
@@ -131,6 +133,8 @@ void process(WiFiClient client) {
       jsonResponse["e"][0]["n"] = "temperature"; // selected option
       jsonResponse["e"][0]["v"] = temperature; // value
       jsonResponse["e"][0]["u"] = "Cel"; // no unit of measurement here
+      serializeJson(jsonResponse, output);
+      printResponse(client, 200, output);
   } else {
     printResponse(client, 404, "Not found.");
   }
@@ -147,4 +151,5 @@ void printResponse(WiFiClient client, int code, String body) {
   } else {
     client.println();
   }
+  client.stop();
 }
