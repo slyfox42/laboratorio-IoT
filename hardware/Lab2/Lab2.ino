@@ -4,8 +4,9 @@
 
 #define FAN_PIN A1
 #define LED_PIN A2
-#define PIR_PIN A3
-#define pinTempSensor A0 
+#define PIR_PIN 2
+#define pinTempSensor A0
+
 #define minTempL 25
 #define maxTempL 35
 #define minTempF 25
@@ -25,7 +26,7 @@ const int timeoutPir = 5000;          //timeout for PIR sensor
 int pirState = LOW;
 int motionPeople = 0;       //flag for people using PIR sensor
 int soundPeople = 0;  //flag for people using microphone
-int people = 0;       //general flag for people
+volatile int people = 0;       //general flag for people
 int nSoundDetected = 0;
 int detectedTime = -1;
 int soundDetectedTime = -1;
@@ -35,30 +36,12 @@ int minTempLED = minTempL;
 int maxTempLED = maxTempL;
 int minTempFan = minTempF;
 int maxTempFan = maxTempF;
+int isFirstDisplay = 1;
 
-LiquidCrystal_PCF8574 lcd(0x27);
-
-void setup() {
-
-  Serial.begin(9600);
-
-  pinMode(FAN_PIN, OUTPUT);
-  PDM.onReceive(onPDMdata);
-
-  if (!PDM.begin(1, 16000)) {
-    Serial.println("Failed to start PDM");
-    while(1);
-  }
-
-  lcd.begin(16, 2);
-  lcd.setBacklight(255);
-  lcd.home();
-  lcd.clear();
-  lcd.print("Working");
-}
+LiquidCrystal_PCF8574 lcd(0x20);
 
 // code for grove temp sensor to acquire and convert temperature to Celsius
-int readTemp(int pin) {
+float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
   float R = 1023.0/a-1.0;
@@ -73,7 +56,7 @@ int readTemp(int pin) {
 }
 
 // check motion using the PIR sensor
-int checkPresence() {
+void checkPresence() {
   int val = digitalRead(PIR_PIN); 
 
   if (motionPeople > 0 && pirState == LOW &&
@@ -138,12 +121,76 @@ void checkSound() {
   }
 }
 
+void changeThreshold() {
+  if(motionPeople > 0 || soundPeople > 0){  //people detected from sensors
+    people = 1;
+    minTempLED = minTempLP;
+    maxTempLED = maxTempLP;
+    minTempFan = minTempFP;
+    maxTempFan = maxTempFP;
+  }
+  else {                                    //people not detected from sensors
+    people = 0;
+    minTempLED = minTempL;
+    maxTempLED = maxTempL;
+    minTempFan = minTempF;
+    maxTempFan = maxTempF;
+  }
+}
+
+void displayOnLCD(float temperature) {
+  lcd.home();
+  lcd.clear();
+  if(isFirstDisplay){
+    lcd.print("T:");
+    lcd.print(temperature);
+    lcd.print(" Pres:");
+    lcd.println(people);
+    lcd.print("AC:");
+    //lcd.print();
+    lcd.print(" HT:");
+    //lcd.println();
+  }
+  else{
+    isFirstDisplay = !isFirstDisplay;
+    lcd.print("AC m:");
+    lcd.print(minTempFan);
+    lcd.print(" M:");
+    lcd.println(maxTempFan);
+    lcd.print("HT m:");
+    lcd.print(minTempLED);
+    lcd.print(" M:");
+    lcd.println(maxTempLED);
+  }
+  isFirstDisplay = !isFirstDisplay;
+}
+
+void setup() {
+
+  Serial.begin(9600);
+
+  pinMode(FAN_PIN, OUTPUT);
+  pinMode(PIR_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(PIR_PIN), checkPresence, CHANGE);
+  PDM.onReceive(onPDMdata);
+
+  if (!PDM.begin(1, 16000)) {
+    Serial.println("Failed to start PDM");
+    while(1);
+  }
+
+  lcd.begin(16, 2);
+  lcd.setBacklight(255);
+  lcd.home();
+  lcd.clear();
+}
+
 void loop() {
 
   float speed = 0;
   float brightness = 255;
 
-  int temperature = readTemp(pinTempSensor);
+  float temperature = readTemp(pinTempSensor);
 
   delay(100);
   // Set Led Brightness proportional to temperature
@@ -172,24 +219,11 @@ void loop() {
   // Serial.print("Brightness: ");
   // Serial.println(brightness);
 
-  // checkPresence();
   // Serial.print("People: ");
   // Serial.println(people);
   //checkSound();
-  if(motionPeople > 0 || soundPeople > 0){  //people detected from sensors
-    people = 1;
-    minTempLED = minTempLP;
-    maxTempLED = maxTempLP;
-    minTempFan = minTempFP;
-    maxTempFan = maxTempFP;
-  }
-  else {                                    //people not detected from sensors
-    people = 0;
-    minTempLED = minTempL;
-    maxTempLED = maxTempL;
-    minTempFan = minTempF;
-    maxTempFan = maxTempF;
-  }
+  changeThreshold();
+  displayOnLCD(temperature);
   delay(3000);
 
 }
