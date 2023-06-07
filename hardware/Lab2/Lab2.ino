@@ -196,7 +196,7 @@ void loop() {
       brightness = 255;
     }
     else{
-      brightness = 255 * (maxTempLED - temperature)/10;
+      brightness = 255 * (maxTempLED - temperature)/(maxTempLED - minTempLED);
     }
   }
   analogWrite(LED_PIN, brightness);
@@ -207,7 +207,7 @@ void loop() {
       speed = 255;
     }
     else{
-      speed = 255 * (temperature - minTempFan)/10;
+      speed = 255 * (temperature - minTempFan)/(maxTempFan - minTempFan);
     }
   }
   // analogWrite(FAN_PIN, speed);
