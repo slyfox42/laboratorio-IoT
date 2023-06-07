@@ -145,22 +145,24 @@ void displayOnLCD(float temperature) {
     lcd.print("T:");
     lcd.print(temperature);
     lcd.print(" Pres:");
-    lcd.println(people);
+    lcd.print(people);
+    lcd.setCursor(0, 1);
     lcd.print("AC:");
     //lcd.print();
     lcd.print(" HT:");
-    //lcd.println();
+    //lcd.print();
   }
   else{
     isFirstDisplay = !isFirstDisplay;
     lcd.print("AC m:");
     lcd.print(minTempFan);
     lcd.print(" M:");
-    lcd.println(maxTempFan);
+    lcd.print(maxTempFan);
+    lcd.setCursor(0, 1);
     lcd.print("HT m:");
     lcd.print(minTempLED);
     lcd.print(" M:");
-    lcd.println(maxTempLED);
+    lcd.print(maxTempLED);
   }
   isFirstDisplay = !isFirstDisplay;
 }
@@ -214,6 +216,7 @@ void loop() {
     }
   }
   // analogWrite(FAN_PIN, speed);
+  
   // Serial.print("Speed: ");
   // Serial.println(speed);
   // Serial.print("Brightness: ");
@@ -221,7 +224,9 @@ void loop() {
 
   // Serial.print("People: ");
   // Serial.println(people);
+
   //checkSound();
+  Serial.println(isFirstDisplay);
   changeThreshold();
   displayOnLCD(temperature);
   delay(3000);
