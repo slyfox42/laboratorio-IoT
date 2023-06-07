@@ -55,31 +55,6 @@ float readTemp(int pin) {
   return temperature;
 }
 
-// check motion using the PIR sensor
-void checkPresence() {
-  int val = digitalRead(PIR_PIN); 
-
-  if (motionPeople > 0 && pirState == LOW &&
-      millis() - detectedTime >= (timeoutPir)) {
-        motionPeople = 0;
-  }
-
-  if (val == HIGH) {	// check if the input is HIGH   
-    if (pirState == LOW) {
-      Serial.println("Motion detected!");	// print on output change
-      pirState = HIGH;
-      motionPeople += 1;
-    }
-  } 
-  else {
-    if (pirState == HIGH) {
-      Serial.println("Motion ended!");	// print on output change
-      detectedTime = millis();
-      pirState = LOW;
-    }
-  }
-}
-
 // callback function for microphone 
 void onPDMdata() {
   // Query the number of available bytes
@@ -138,33 +113,49 @@ void changeThreshold() {
   }
 }
 
-void displayOnLCD(float temperature) {
+void displayOnLCD(float temperature, float brightness, float speed) {
   lcd.home();
   lcd.clear();
   if(isFirstDisplay){
-    lcd.print("T:");
+    lcd.print("T: ");
     lcd.print(temperature);
-    lcd.print(" Pres:");
+    lcd.print(" Pres: ");
     lcd.print(people);
     lcd.setCursor(0, 1);
-    lcd.print("AC:");
-    //lcd.print();
-    lcd.print(" HT:");
-    //lcd.print();
+    lcd.print("AC: ");
+    float ACpercentage = (speed / 255) * 100;
+    lcd.print(ACpercentage, 0);
+    lcd.print("% ");
+    lcd.print("HT: ");
+    float HTpercentage = (brightness / 255) * 100;
+    lcd.print(HTpercentage, 0);
+    lcd.print("%");
   }
   else{
-    isFirstDisplay = !isFirstDisplay;
-    lcd.print("AC m:");
+    lcd.print("AC m: ");
     lcd.print(minTempFan);
-    lcd.print(" M:");
+    lcd.print(" M: ");
     lcd.print(maxTempFan);
     lcd.setCursor(0, 1);
-    lcd.print("HT m:");
+    lcd.print("HT m: ");
     lcd.print(minTempLED);
-    lcd.print(" M:");
+    lcd.print(" M: ");
     lcd.print(maxTempLED);
   }
   isFirstDisplay = !isFirstDisplay;
+}
+// sets motionPeople to 1 in case the PIR sensor detects movement
+void setPresent() {
+  motionPeople = 1;
+  detectedTime = millis();
+}
+
+// checks the value of motionPeople and resets if timeout has been reached
+void checkPresent() {
+  if (motionPeople == 1 &&
+      millis() - detectedTime >= (timeoutPir)) {
+        motionPeople = 0;
+  }
 }
 
 void setup() {
@@ -173,7 +164,7 @@ void setup() {
 
   pinMode(FAN_PIN, OUTPUT);
   pinMode(PIR_PIN, INPUT);
-  attachInterrupt(digitalPinToInterrupt(PIR_PIN), checkPresence, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIR_PIN), setPresent, CHANGE);
   PDM.onReceive(onPDMdata);
 
   if (!PDM.begin(1, 16000)) {
@@ -189,10 +180,14 @@ void setup() {
 
 void loop() {
 
+
   float speed = 0;
   float brightness = 255;
 
+  checkPresent();
+
   float temperature = readTemp(pinTempSensor);
+
 
   delay(100);
   // Set Led Brightness proportional to temperature
@@ -201,7 +196,7 @@ void loop() {
       brightness = 0;
     }
     else{
-      brightness = 255 - (maxTempLED - temperature)*30;
+      brightness = 255 - (maxTempLED - temperature) * 30;
     }
   }
   analogWrite(LED_PIN, brightness);
@@ -228,7 +223,7 @@ void loop() {
   //checkSound();
   Serial.println(isFirstDisplay);
   changeThreshold();
-  displayOnLCD(temperature);
+  displayOnLCD(temperature, brightness, speed);
   delay(3000);
 
 }
