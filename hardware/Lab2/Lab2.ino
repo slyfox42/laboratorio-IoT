@@ -7,15 +7,15 @@
 #define PIR_PIN 2
 #define pinTempSensor A0
 
-#define minTempL 25
-#define maxTempL 35
+#define minTempL 15
+#define maxTempL 20
 #define minTempF 25
 #define maxTempF 35
 
-#define minTempLP 22
-#define maxTempLP 32
-#define minTempFP 22
-#define maxTempFP 32
+#define minTempLP 16
+#define maxTempLP 21
+#define minTempFP 24
+#define maxTempFP 29
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
@@ -36,7 +36,8 @@ int minTempLED = minTempL;
 int maxTempLED = maxTempL;
 int minTempFan = minTempF;
 int maxTempFan = maxTempF;
-int isFirstDisplay = 1;
+bool isFirstDisplay = true;
+bool tempModified = false;
 
 LiquidCrystal_PCF8574 lcd(0x20);
 
@@ -95,21 +96,92 @@ void checkSound() {
         nSoundDetected = 0;
   }
 }
-
 void changeThreshold() {
-  if(motionPeople > 0 || soundPeople > 0){  //people detected from sensors
-    people = 1;
-    minTempLED = minTempLP;
-    maxTempLED = maxTempLP;
-    minTempFan = minTempFP;
-    maxTempFan = maxTempFP;
+  if(Serial.available() > 0) {
+    String input = Serial.readString();
+    int index = input.indexOf("ACm");     //change AC m setpoint in else branch
+    if (index == -1) {
+      index = input.indexOf("ACM");       //change AC M setpoint in else branch
+      if(index == -1) {
+        index = input.indexOf("HTm");     //change HT m setpoint in else branch
+        if(index == -1) {
+          index = input.indexOf("HTM");   //change HT M setpoint in else branch
+          if(index == -1) {
+            index = input.indexOf("AUTO");
+            if(index == -1) {
+              Serial.println("Invalid command.");
+              Serial.println("Use ACm, ACM, HTm, HTM followed by integer.");
+              Serial.println("Use AUTO to restore default settings.");
+            } else {
+              Serial.println("Default settings restored");
+              tempModified = false;
+            }
+          } else {
+            String valueString = input.substring(index + 3);
+            if(valueString.toInt() <= minTempLED) {
+              Serial.print("HT M must be greater than ");
+              Serial.println(minTempLED);
+            } else {
+              maxTempLED = valueString.toInt();
+              Serial.print("Set HT M: ");
+              Serial.println(maxTempLED);
+              if(tempModified == false) tempModified = true;
+            }
+          }
+        } else {
+          String valueString = input.substring(index + 3);
+          if(valueString.toInt() >= maxTempLED) {
+            Serial.print("HT m must be lower than ");
+            Serial.println(maxTempLED);
+          } else {
+            minTempLED = valueString.toInt();
+            Serial.print("Set HT m: ");
+            Serial.println(minTempLED);
+            if(tempModified == false) tempModified = true;
+          }
+        }
+      } else {
+        String valueString = input.substring(index + 3);
+        if(valueString.toInt() <= minTempFan) {
+          Serial.print("AC M must be greater than ");
+          Serial.println(minTempFan);
+        } else {
+          maxTempFan = valueString.toInt();
+          Serial.print("Set AC M: ");
+          Serial.println(maxTempFan);            
+          if(tempModified == false) tempModified = true;
+        }
+      }
+    } else {
+      String valueString = input.substring(index + 3);
+      if(valueString.toInt() >= maxTempFan) {
+        Serial.print("AC m must be lower than ");
+        Serial.println(maxTempFan);
+      } else {
+        minTempFan = valueString.toInt();
+        Serial.print("Set AC m: ");
+        Serial.println(minTempFan);
+        if(tempModified == false) tempModified = true;
+      }
+    }
   }
-  else {                                    //people not detected from sensors
-    people = 0;
-    minTempLED = minTempL;
-    maxTempLED = maxTempL;
-    minTempFan = minTempF;
-    maxTempFan = maxTempF;
+  else {
+    if(tempModified == false) {
+      if(motionPeople > 0 || soundPeople > 0) {  //people detected from sensors
+      people = 1;
+      minTempLED = minTempLP;
+      maxTempLED = maxTempLP;
+      minTempFan = minTempFP;
+      maxTempFan = maxTempFP;
+    }
+    else {                                    //people not detected from sensors
+      people = 0;
+      minTempLED = minTempL;
+      maxTempLED = maxTempL;
+      minTempFan = minTempF;        
+      maxTempFan = maxTempF;
+      }
+    }
   }
 }
 
@@ -161,6 +233,8 @@ void checkPresent() {
 void setup() {
 
   Serial.begin(9600);
+  while (!Serial);
+  Serial.println("Lab 2 Starting");
 
   pinMode(FAN_PIN, OUTPUT);
   pinMode(PIR_PIN, INPUT);
@@ -188,8 +262,7 @@ void loop() {
 
   float temperature = readTemp(pinTempSensor);
 
-
-  delay(100);
+  delay(100); //check if useful or not
   // Set Led Brightness proportional to temperature
   if(temperature < maxTempLED){
     if(temperature <= minTempLED){
@@ -210,16 +283,7 @@ void loop() {
       speed = 255 * (temperature - minTempFan)/(maxTempFan - minTempFan);
     }
   }
-  // analogWrite(FAN_PIN, speed);
-  
-  // Serial.print("Speed: ");
-  // Serial.println(speed);
-  // Serial.print("Brightness: ");
-  // Serial.println(brightness);
-
-  // Serial.print("People: ");
-  // Serial.println(people);
-
+  analogWrite(FAN_PIN, speed);
   //checkSound();
   Serial.println(isFirstDisplay);
   changeThreshold();
