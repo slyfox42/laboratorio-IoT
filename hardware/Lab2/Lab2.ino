@@ -19,7 +19,7 @@
 
 const int B = 4275;               // B value of the thermistor
 const int R0 = 100000;            // R0 = 100k
-const int soundThreshold = 200; // sound of snapping finger
+const int soundThreshold = 100; // sound of snapping finger
 const int soundInterval = 10000; //timeout for Microphone
 const int nSoundEvents = 10;    //number of events for check a person in soundInterval
 const int timeoutPir = 5000;          //timeout for PIR sensor
@@ -28,8 +28,8 @@ int motionPeople = 0;       //flag for people using PIR sensor
 int soundPeople = 0;  //flag for people using microphone
 volatile int people = 0;       //general flag for people
 int nSoundDetected = 0;
-int detectedTime = -1;
-int soundDetectedTime = -1;
+long detectedTime = -1;
+long soundDetectedTime = -1;
 short sampleBuffer[256];
 volatile int samplesRead;
 int minTempLED = minTempL;
@@ -46,13 +46,7 @@ float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
   float R = 1023.0/a-1.0;
-  R = R0*R;
-
-  float temperature = 1.0/(log(R/R0)/B+1/298.15)-273.15; // convert to temperature via datasheet
-  
-  Serial.print("temperature = ");
-  Serial.println(temperature);
-
+  float temperature = 1.0/(log(R)/B+1/298.15)-273.15; // convert to temperature via datasheet
   return temperature;
 }
 
@@ -75,22 +69,21 @@ void checkSound() {
         Serial.println("Sound detected");     //debug for detected sound
         //Serial.println(sampleBuffer[i]);    //volume of sound detected
         nSoundDetected += 1;
+        soundDetectedTime = millis();    
       }
     // clear the read count
     samplesRead = 0;
     }
   }
   if (soundPeople == 0 && nSoundDetected >= nSoundEvents){     //no people yet detected from mic, but min number of event detected
-      //Serial.println("People detected by microphone");
-      soundPeople += 1;
-      soundDetectedTime = millis();                            //timestamp
-    }
+    //Serial.println("People detected by microphone");
+    soundPeople += 1;
+  }
   else if (soundPeople == 1 && nSoundDetected > nSoundEvents){  //people detected and another sound detected
-    //Serial.println("People made another sound")
-    soundDetectedTime = millis();                               //timestamp
+    //Serial.println("People made another sound");
     nSoundDetected = nSoundEvents;                              //counter back to nSoundEvents
   }
-  if (nSoundDetected > 0 && millis() - detectedTime >= (soundInterval)) {   //no sounds detected for soundInterval
+  if (nSoundDetected > 0 && ((millis() - soundDetectedTime) >= (soundInterval))) {   //no sounds detected for soundInterval
         //Serial.println("Sounds not detected for a long time");
         soundPeople = 0;
         nSoundDetected = 0;
@@ -254,7 +247,6 @@ void setup() {
 
 void loop() {
 
-
   float speed = 0;
   float brightness = 0;
 
@@ -273,7 +265,6 @@ void loop() {
     }
   }
   analogWrite(LED_PIN, brightness);
-  
   // Set Fan Speed proportional to temperature
   if(temperature >= minTempFan){
     if(temperature > maxTempFan){
@@ -284,8 +275,7 @@ void loop() {
     }
   }
   analogWrite(FAN_PIN, speed);
-  //checkSound();
-  Serial.println(isFirstDisplay);
+  checkSound();
   changeThreshold();
   displayOnLCD(temperature, brightness, speed);
   delay(3000);
