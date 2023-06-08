@@ -74,7 +74,6 @@ float readTemp(int pin) {
 
   float R = 1023.0/a-1.0;
   R = R0*R;
-  // TODO: check what is R0 for because it looks completely useless
   float temperature = 1.0/(log(R/R0)/B+1/298.15) - 273.15; // convert to temperature via datasheet
   
   Serial.print("temperature = ");
@@ -83,8 +82,7 @@ float readTemp(int pin) {
   return temperature;
 }
 
-void loop() {
-  float temperature = readTemp(pinTempSensor);
+String senMlEncode(float temperature) {
   String body;
   jsonResponse.clear();
   jsonResponse["bn"] =  "ArduinoGroupX";
@@ -94,6 +92,10 @@ void loop() {
   jsonResponse["e"][0]["u"] = "Cel"; 
   serializeJson(jsonResponse, body);
 
+  return body;
+}
+
+int postTemperature(String body) {
   client.beginRequest();
   client.post("/log");
   client.sendHeader("Content-Type", "application/json");
@@ -101,7 +103,15 @@ void loop() {
   client.beginBody();
   client.print(body);
   client.endRequest();
-  int ret = client.responseStatusCode();
 
+  return client.responseStatusCode();
+}
+
+void loop() {
+  float temperature = readTemp(pinTempSensor);
+  String body = senMlEncode(temperature);
+  int response = postTemperature(body);
+  Serial.print("Response: ");
+  Serial.println(response);
   delay(3000);
 }
