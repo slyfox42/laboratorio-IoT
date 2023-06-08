@@ -9,7 +9,6 @@ WiFiClient wifi;
 HttpClient client = HttpClient(wifi, serverAddress, serverPort);
 
 const int B = 4275;               // B value of the thermistor
-const int R0 = 100000;    
 const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
 DynamicJsonDocument jsonResponse(capacity);
 
@@ -25,14 +24,11 @@ void setup() {
   printWifiStatus();
 }
 
-
-
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
   float R = 1023.0/a-1.0;
-  R = R0*R;
-  float temperature = 1.0/(log(R/R0)/B+1/298.15) - 273.15; // convert to temperature via datasheet
+  float temperature = 1.0/(log(R)/B+1/298.15) - 273.15; // convert to temperature via datasheet
   
   Serial.print("temperature = ");
   Serial.println(temperature);

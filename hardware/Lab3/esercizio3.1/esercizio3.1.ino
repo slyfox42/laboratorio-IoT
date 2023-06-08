@@ -7,7 +7,6 @@
 #define ledPin A2
 
 WiFiServer server(80);            //server socket
-const int R0 = 100000;   // needed for temperature conversion
 const int B = 4275;            // B value of the thermistor
 
 WiFiClient client = server.available();
