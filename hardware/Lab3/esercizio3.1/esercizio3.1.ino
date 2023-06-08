@@ -39,13 +39,10 @@ void loop() {
 }
 
 // read temperature using the temp sensor
-int readTemp(int pin) {
+float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
-
   float R = 1023.0/a-1.0;
-  R = R0*R;
-
-  float temperature = 1.0/(log(R/R0)/B+1/298.15)-273.15; // convert to temperature via datasheet
+  float temperature = 1.0/(log(R)/B+1/298.15)-273.15; // convert to temperature via datasheet
   
   return temperature;
 }
@@ -66,33 +63,37 @@ void process(WiFiClient client) {
       int intValue = ledValue.toInt();
       digitalWrite(ledPin, intValue); // turn the led on or off
 
-      jsonResponse.clear(); // reset json object
-      jsonResponse["bn"] =  "ArduinoGroupX";
-      jsonResponse["e"][0]["t"] = int(millis()/1000);
-      jsonResponse["e"][0]["n"] = "led"; // selected option
-      jsonResponse["e"][0]["v"] = ledValue; // value
-      jsonResponse["e"][0]["u"] = NULL; // no unit of measurement here
-      serializeJson(jsonResponse, output);
-      printResponse(client, 200, output);
+      String body = senMlEncode("led", intValue, "");
+      
+      printResponse(client, 200, body);
     } else {
       printResponse(client, 400, "Invalid led value.");
     }
 
   } else if (url.startsWith("/temperature")) {
-      Serial.println("HERE!!");
       int temperature = readTemp(pinTempSensor);
-      jsonResponse.clear(); // reset json object
-      jsonResponse["bn"] =  "ArduinoGroupX";
-      jsonResponse["e"][0]["t"] = int(millis()/1000);
-      jsonResponse["e"][0]["n"] = "temperature"; // selected option
-      jsonResponse["e"][0]["v"] = temperature; // value
-      jsonResponse["e"][0]["u"] = "Cel"; 
-      serializeJson(jsonResponse, output);
-      printResponse(client, 200, output);
+      String body = senMlEncode("temperature", temperature, "Cel");
+      printResponse(client, 200, body);
   } else {
     printResponse(client, 404, "Not found.");
   }
+}
 
+
+String senMlEncode(String option, float value, String unit) {
+  if (option == "led") {
+    value = int(value);
+  }
+  String body;
+  jsonResponse.clear();
+  jsonResponse["bn"] =  "ArduinoGroupX";
+  jsonResponse["e"][0]["t"] = int(millis()/1000);
+  jsonResponse["e"][0]["n"] = option;
+  jsonResponse["e"][0]["v"] = value; 
+  jsonResponse["e"][0]["u"] = unit; 
+  serializeJson(jsonResponse, body);
+
+  return body;
 }
 
 // print message response with code and body
