@@ -1,2 +1,2 @@
-extern char ssid[] = "";
-extern char pass[] = "";
+extern char wifiSsid[] = "";
+extern char wifiPass[] = "";

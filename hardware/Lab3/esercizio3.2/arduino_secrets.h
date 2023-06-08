@@ -1,4 +1,4 @@
-extern char ssid[] = "";
-extern char pass[] = "";
-extern char server_address[] = "";
-extern int server_port = 80;
+extern char wifiSsid[] = "";
+extern char wifiPass[] = "";
+extern char serverAddress[] = "";
+extern int serverPort = 80;
