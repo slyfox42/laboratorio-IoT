@@ -1,5 +1,4 @@
 #include <WiFiNINA.h>
-#include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "arduino_secrets.h"
 
@@ -76,7 +75,7 @@ void connect_WiFi() {
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
     Serial.println(ssid);
-    status = WiFi.begin(ssid, pass); // connect to wifi using name and pass
+    status = WiFi.begin(ssid, pass); // credentials imported from "arduino_secrets.h"
 
     // wait 10 seconds for connection:
     delay(10000);
@@ -119,7 +118,6 @@ void process(WiFiClient client) {
       jsonResponse["e"][0]["u"] = NULL; // no unit of measurement here
       serializeJson(jsonResponse, output);
       printResponse(client, 200, output);
-
     } else {
       printResponse(client, 400, "Invalid led value.");
     }
@@ -132,7 +130,7 @@ void process(WiFiClient client) {
       jsonResponse["e"][0]["t"] = int(millis()/1000);
       jsonResponse["e"][0]["n"] = "temperature"; // selected option
       jsonResponse["e"][0]["v"] = temperature; // value
-      jsonResponse["e"][0]["u"] = "Cel"; // no unit of measurement here
+      jsonResponse["e"][0]["u"] = "Cel"; 
       serializeJson(jsonResponse, output);
       printResponse(client, 200, output);
   } else {
