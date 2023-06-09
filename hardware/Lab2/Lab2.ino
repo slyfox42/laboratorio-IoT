@@ -139,80 +139,78 @@ void resetSetPoints() {
 }
 
 void changeThreshold() {
-	if (Serial.available()) {
-		String input = Serial.readString();
+  if (Serial.available()) {
+    String input = Serial.readString();
 
-		// set automatic changing of setpoints
-		if (input.indexOf("AUTO") != -1) {
-			Serial.println("Default settings restored");
-			tempModified = false;
+   	// set automatic changing of setpoints
+    if (input.indexOf("AUTO") != -1) {
+      Serial.println("Default settings restored");
+      tempModified = false;
       resetSetPoints();
       return;
-		}
-    
+    }
+
     input.trim();
-		int value = getValue(input);
+    int value = getValue(input);
 
-		if (!value) {
-			return;
-		}
+    if (!value) {
+      return;
+    }
 
-		// set AC minimum setpoint
-		if (input.indexOf("ACm") != -1) {
-			int result = setValue(value, minTempFan, maxTempFan, "min");
-			if (result)
-			{
-				Serial.print("Set AC minimum set point: ");
-				Serial.println(minTempFan);
-			}
+   	// set AC minimum setpoint
+    if (input.indexOf("ACm") != -1) {
+      int result = setValue(value, minTempFan, maxTempFan, "min");
+      if (result)
+      {
+        Serial.print("Set AC minimum set point: ");
+        Serial.println(minTempFan);
+      }
 
-			return;
-		}
+      return;
+    }
 
-		// set AC maximum setpoint
-		if (input.indexOf("ACM") != -1) {
-			int result = setValue(value, maxTempFan, minTempFan, "max");
-			if (result)
-			{
-				Serial.print("Set AC maximum set point: ");
-				Serial.println(maxTempFan);
-			}
+   	// set AC maximum setpoint
+    if (input.indexOf("ACM") != -1) {
+      int result = setValue(value, maxTempFan, minTempFan, "max");
+      if (result) {
+        Serial.print("Set AC maximum set point: ");
+        Serial.println(maxTempFan);
+      }
 
-			return;
-		}
+      return;
+    }
 
-		// set Heater minimum setpoint
-		if (input.indexOf("HTm") != -1) {
-			int result = setValue(value, minTempLED, maxTempLED, "min");
-			if (result)
-			{
-				Serial.print("Set HT minimum set point: ");
-				Serial.println(minTempLED);
-			}
+   	// set Heater minimum setpoint
+    if (input.indexOf("HTm") != -1) {
+      int result = setValue(value, minTempLED, maxTempLED, "min");
+      if (result) {
+        Serial.print("Set HT minimum set point: ");
+        Serial.println(minTempLED);
+      }
 
-			return;
-		}
+      return;
+    }
 
-		// set Heater maximum setpoint
-		if (input.indexOf("HTM") != -1) {
-			int result = setValue(value, maxTempLED, minTempLED, "max");
-			if (result)
-			{
-				Serial.print("Set HT maximum set point: ");
-				Serial.println(maxTempLED);
-			}
+   	// set Heater maximum setpoint
+    if (input.indexOf("HTM") != -1) {
+      int result = setValue(value, maxTempLED, minTempLED, "max");
+      if (result)
+      {
+        Serial.print("Set HT maximum set point: ");
+        Serial.println(maxTempLED);
+      }
 
-			return;
-		}
+      return;
+    }
 
-		Serial.println("Invalid command.");
-		Serial.println("Use ACm, ACM, HTm, HTM followed by integer.");
-		Serial.println("Use AUTO to restore default settings.");
-	}
+    Serial.println("Invalid command.");
+    Serial.println("Use ACm, ACM, HTm, HTM followed by integer.");
+    Serial.println("Use AUTO to restore default settings.");
+  }
 
-	if (!tempModified) {
+  if (!tempModified) {
     resetSetPoints();
-	}
+  }
 }
 
 void displayOnLCD(float temperature, float brightness, float speed) {
