@@ -89,85 +89,91 @@ void checkSound() {
         nSoundDetected = 0;
   }
 }
-void changeThreshold() {
-  if(Serial.available() > 0) {
-    String input = Serial.readString();
-    int index = input.indexOf("ACm");     //change AC m setpoint in else branch
-    if (index == -1) {
-      index = input.indexOf("ACM");       //change AC M setpoint in else branch
-      if(index == -1) {
-        index = input.indexOf("HTm");     //change HT m setpoint in else branch
-        if(index == -1) {
-          index = input.indexOf("HTM");   //change HT M setpoint in else branch
-          if(index == -1) {
-            index = input.indexOf("AUTO");
-            if(index == -1) {
-              Serial.println("Invalid command.");
-              Serial.println("Use ACm, ACM, HTm, HTM followed by integer.");
-              Serial.println("Use AUTO to restore default settings.");
-            } else {
-              Serial.println("Default settings restored");
-              tempModified = false;
-            }
-          } else {
-            String valueString = input.substring(index + 3);
-            if(valueString.toInt() <= minTempLED) {
-              Serial.print("HT M must be greater than ");
-              Serial.println(minTempLED);
-            } else {
-              maxTempLED = valueString.toInt();
-              Serial.print("Set HT M: ");
-              Serial.println(maxTempLED);
-              if(tempModified == false) tempModified = true;
-            }
-          }
-        } else {
-          String valueString = input.substring(index + 3);
-          if(valueString.toInt() >= maxTempLED) {
-            Serial.print("HT m must be lower than ");
-            Serial.println(maxTempLED);
-          } else {
-            minTempLED = valueString.toInt();
-            Serial.print("Set HT m: ");
-            Serial.println(minTempLED);
-            if(tempModified == false) tempModified = true;
-          }
-        }
-      } else {
-        String valueString = input.substring(index + 3);
-        if(valueString.toInt() <= minTempFan) {
-          Serial.print("AC M must be greater than ");
-          Serial.println(minTempFan);
-        } else {
-          maxTempFan = valueString.toInt();
-          Serial.print("Set AC M: ");
-          Serial.println(maxTempFan);            
-          if(tempModified == false) tempModified = true;
-        }
-      }
-    } else {
-      String valueString = input.substring(index + 3);
-      if(valueString.toInt() >= maxTempFan) {
-        Serial.print("AC m must be lower than ");
-        Serial.println(maxTempFan);
-      } else {
-        minTempFan = valueString.toInt();
-        Serial.print("Set AC m: ");
-        Serial.println(minTempFan);
-        if(tempModified == false) tempModified = true;
-      }
+
+// validate and extract command value
+int getValue(String input) {
+  if (input.length() == 5) {
+    String valueString = input.subString(3);
+    if (isDigit(valueString)) {
+      return valueString.toInt();
     }
   }
-  else {
-    if(tempModified == false) {
-      if(motionPeople > 0 || soundPeople > 0) {  //people detected from sensors
+  Serial.println("Invalid value. Please enter the command followed by 2 digits.")
+  return 0;
+}
+
+// validate and set setPoints
+void setValue(int newValue, int &setPoint, int otherSetPoint, String type) {
+  if (type == "min" && newValue >= otherSetPoint) {
+    Serial.print("New value must be lower than ");
+    Serial.println(otherSetPoint);
+    return 0;
+  } else if (type == "max" && newValue <= otherSetPoint) {
+    Serial.print("New value must be higher than ");
+    Serial.println(otherSetPoint);
+    return 0;
+  } else {
+    setPoint = newValue;
+    return 1;
+  }
+}
+
+void changeThreshold() {
+  if (!Serial.available()) {
+    return;
+  }
+  String input = Serial.readString();
+  int value = getValue(input);
+  if (!value) {
+      return;
+    }
+
+  // set AC minimum setpoint
+  if (input.indexOf("ACm") > 0) {
+    int result = setValue(value, minTempFan, maxTempFan, "min");
+    if (result) {
+      Serial.print("Set AC minimum set point: ");
+      Serial.println(minTempFan);
+    }
+    return;
+  }
+  // set AC maximum setpoint
+  if (input.indexOf("ACM") > 0) {
+    int result = setValue(value, maxTempFan, minTempFan, "max");
+    if (result) {
+      Serial.print("Set AC maximum set point: ");
+      Serial.println(maxTempFan);     
+    }
+    return;
+  }
+  // set Heater minimum setpoint
+  if (input.indexOf("HTm") > 0) {
+    int result = setValue(value, minTempLED, maxTempLED, "min");
+    if (result) {
+      Serial.print("Set HT minimum set point: ");
+      Serial.println(minTempLED);
+    }
+    return;
+  }
+  // set Heater maximum setpoint
+  if (input.indexOf("HTM") > 0) {
+    int result = setValue(value, maxTempLED, minTempLed, "max");
+    if (result) {
+      Serial.print("Set HT maximum set point: ");
+      Serial.println(maxTempLED);
+    }
+    return;
+  }
+  // reset original values
+  if (input.indexOf("AUTO") > 0) {
+    Serial.println("Default settings restored");
+    if(motionPeople > 0 || soundPeople > 0) {  //people detected from sensors
       people = 1;
       minTempLED = minTempLP;
       maxTempLED = maxTempLP;
       minTempFan = minTempFP;
       maxTempFan = maxTempFP;
-    }
-    else {                                    //people not detected from sensors
+    } else {                                    //people not detected from sensors
       people = 0;
       minTempLED = minTempL;
       maxTempLED = maxTempL;
@@ -175,7 +181,11 @@ void changeThreshold() {
       maxTempFan = maxTempF;
       }
     }
+    return;
   }
+  Serial.println("Invalid command.");
+  Serial.println("Use ACm, ACM, HTm, HTM followed by integer.");
+  Serial.println("Use AUTO to restore default settings.");
 }
 
 void displayOnLCD(float temperature, float brightness, float speed) {
@@ -254,7 +264,7 @@ void loop() {
 
   float temperature = readTemp(pinTempSensor);
 
-  delay(100); //check if useful or not
+  delay(100);
   // Set Led Brightness proportional to temperature
   if(temperature < maxTempLED){
     if(temperature <= minTempLED){
