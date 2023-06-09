@@ -7,27 +7,29 @@
 #define PIR_PIN 2
 #define pinTempSensor A0
 
+// temperature set points for when people are not present
 #define minTempL 15
 #define maxTempL 20
 #define minTempF 25
 #define maxTempF 35
 
+// temperature set points for the people are present
 #define minTempLP 16
 #define maxTempLP 21
 #define minTempFP 24
 #define maxTempFP 29
 
 const int B = 4275;               // B value of the thermistor
-const int soundThreshold = 100; // sound of snapping finger
-const int soundInterval = 10000; //timeout for Microphone
-const int nSoundEvents = 10;    //number of events for check a person in soundInterval
-const int timeoutPir = 5000;          //timeout for PIR sensor
-int motionPeople = 0;       //flag for people using PIR sensor
-int soundPeople = 0;  //flag for people using microphone
-volatile int people = 0;       //general flag for people
-int nSoundDetected = 0;
-long detectedTime = -1;
-long soundDetectedTime = -1;
+const int soundThreshold = 100;   // sound of snapping finger
+const int soundInterval = 10000;  // timeout for Microphone
+const int nSoundEvents = 10;      // number of events for check a person in soundInterval
+const int timeoutPir = 5000;      // timeout for PIR sensor
+int motionPeople = 0;             // flag for people detected by PIR sensor
+int soundPeople = 0;              // flag for people detected by microphone
+volatile int people = 0;          // general flag for people
+int nSoundDetected = 0;           // number of sounds detected
+long pirDetectedTime = -1;        // time at which the PIR sensor detected movement
+long soundDetectedTime = -1;      // time at which the microphone detected movement
 short sampleBuffer[256];
 volatile int samplesRead;
 int minTempLED = minTempL;
@@ -35,7 +37,7 @@ int maxTempLED = maxTempL;
 int minTempFan = minTempF;
 int maxTempFan = maxTempF;
 bool isFirstDisplay = true;
-bool tempModified = false;
+bool tempModified = false;        // temperature values have been modified from the serial monitor
 
 LiquidCrystal_PCF8574 lcd(0x20);
 
@@ -43,19 +45,14 @@ float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
   float R = 1023.0/a-1.0;
-  float temperature = 1.0/(log(R)/B+1/298.15)-273.15; // convert to temperature via datasheet
+  float temperature = 1.0/(log(R)/B+1/298.15)-273.15;
   return temperature;
 }
 
 // callback function for microphone 
 void onPDMdata() {
-  // Query the number of available bytes
   int bytesAvailable = PDM.available();
-
-  // Read into the sample buffer
   PDM.read(sampleBuffer, bytesAvailable);
-
-  // 16-bit, 2 bytes per sample
   samplesRead = bytesAvailable / 2;
 }
 
@@ -63,24 +60,22 @@ void checkSound() {
   if (samplesRead) {
     for (int i = 0; i < samplesRead; i++) {
       if (sampleBuffer[i]>=soundThreshold) {
-        Serial.println("Sound detected");     //debug for detected sound
+        Serial.println("Sound detected");
         nSoundDetected += 1;
         soundDetectedTime = millis();    
       }
-    // clear the read count
     samplesRead = 0;
     }
   }
-  if (soundPeople == 0 && nSoundDetected >= nSoundEvents) {     //no people yet detected from mic, but min number of event detected
-    //Serial.println("People detected by microphone");
+  // no people yet detected from mic, but min number of event detected
+  if (soundPeople == 0 && nSoundDetected >= nSoundEvents) {
     soundPeople += 1;
+  // people are present and another sound was detected
+  } else if (soundPeople == 1 && nSoundDetected > nSoundEvents) {
+    nSoundDetected = nSoundEvents;
   }
-  else if (soundPeople == 1 && nSoundDetected > nSoundEvents) {  //people detected and another sound detected
-    //Serial.println("People made another sound");
-    nSoundDetected = nSoundEvents;                              //counter back to nSoundEvents
-  }
-  if (nSoundDetected > 0 && ((millis() - soundDetectedTime) >= (soundInterval))) {   //no sounds detected for soundInterval
-        //Serial.println("Sounds not detected for a long time");
+  // no sounds detected for soundInterval
+  if (nSoundDetected > 0 && ((millis() - soundDetectedTime) >= (soundInterval))) {
         soundPeople = 0;
         nSoundDetected = 0;
   }
@@ -243,13 +238,13 @@ void displayOnLCD(float temperature, float brightness, float speed) {
 // sets motionPeople to 1 in case the PIR sensor detects movement
 void setPresent() {
   motionPeople = 1;
-  detectedTime = millis();
+  pirDetectedTime = millis();
 }
 
 // checks the value of motionPeople and resets if timeout has been reached
 void checkPresent() {
   if (motionPeople == 1 &&
-      millis() - detectedTime >= (timeoutPir)) {
+      millis() - pirDetectedTime >= (timeoutPir)) {
         motionPeople = 0;
   }
 }
