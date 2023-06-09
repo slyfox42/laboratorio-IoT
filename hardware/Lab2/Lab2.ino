@@ -70,9 +70,6 @@ void checkSound() {
   // no people yet detected from mic, but min number of event detected
   if (soundPeople == 0 && nSoundDetected >= nSoundEvents) {
     soundPeople += 1;
-  // people are present and another sound was detected
-  } else if (soundPeople == 1 && nSoundDetected > nSoundEvents) {
-    nSoundDetected = nSoundEvents;
   }
   // no sounds detected for soundInterval
   if (nSoundDetected > 0 && ((millis() - soundDetectedTime) >= (soundInterval))) {
