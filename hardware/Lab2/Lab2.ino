@@ -142,7 +142,7 @@ void changeThreshold() {
   if (Serial.available()) {
     String input = Serial.readString();
 
-   	// set automatic changing of setpoints
+    // set automatic changing of setpoints
     if (input.indexOf("AUTO") != -1) {
       Serial.println("Default settings restored");
       tempModified = false;
@@ -157,7 +157,7 @@ void changeThreshold() {
       return;
     }
 
-   	// set AC minimum setpoint
+    // set AC minimum setpoint
     if (input.indexOf("ACm") != -1) {
       int result = setValue(value, minTempFan, maxTempFan, "min");
       if (result)
@@ -169,7 +169,7 @@ void changeThreshold() {
       return;
     }
 
-   	// set AC maximum setpoint
+    // set AC maximum setpoint
     if (input.indexOf("ACM") != -1) {
       int result = setValue(value, maxTempFan, minTempFan, "max");
       if (result) {
@@ -180,7 +180,7 @@ void changeThreshold() {
       return;
     }
 
-   	// set Heater minimum setpoint
+    // set Heater minimum setpoint
     if (input.indexOf("HTm") != -1) {
       int result = setValue(value, minTempLED, maxTempLED, "min");
       if (result) {
@@ -191,7 +191,7 @@ void changeThreshold() {
       return;
     }
 
-   	// set Heater maximum setpoint
+    // set Heater maximum setpoint
     if (input.indexOf("HTM") != -1) {
       int result = setValue(value, maxTempLED, minTempLED, "max");
       if (result)
