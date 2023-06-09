@@ -18,12 +18,10 @@
 #define maxTempFP 29
 
 const int B = 4275;               // B value of the thermistor
-const int R0 = 100000;            // R0 = 100k
 const int soundThreshold = 100; // sound of snapping finger
 const int soundInterval = 10000; //timeout for Microphone
 const int nSoundEvents = 10;    //number of events for check a person in soundInterval
 const int timeoutPir = 5000;          //timeout for PIR sensor
-int pirState = LOW;
 int motionPeople = 0;       //flag for people using PIR sensor
 int soundPeople = 0;  //flag for people using microphone
 volatile int people = 0;       //general flag for people
@@ -41,7 +39,6 @@ bool tempModified = false;
 
 LiquidCrystal_PCF8574 lcd(0x20);
 
-// code for grove temp sensor to acquire and convert temperature to Celsius
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
@@ -65,9 +62,8 @@ void onPDMdata() {
 void checkSound() {
   if (samplesRead) {
     for (int i = 0; i < samplesRead; i++) {
-      if (sampleBuffer[i]>=soundThreshold){
+      if (sampleBuffer[i]>=soundThreshold) {
         Serial.println("Sound detected");     //debug for detected sound
-        //Serial.println(sampleBuffer[i]);    //volume of sound detected
         nSoundDetected += 1;
         soundDetectedTime = millis();    
       }
@@ -75,11 +71,11 @@ void checkSound() {
     samplesRead = 0;
     }
   }
-  if (soundPeople == 0 && nSoundDetected >= nSoundEvents){     //no people yet detected from mic, but min number of event detected
+  if (soundPeople == 0 && nSoundDetected >= nSoundEvents) {     //no people yet detected from mic, but min number of event detected
     //Serial.println("People detected by microphone");
     soundPeople += 1;
   }
-  else if (soundPeople == 1 && nSoundDetected > nSoundEvents){  //people detected and another sound detected
+  else if (soundPeople == 1 && nSoundDetected > nSoundEvents) {  //people detected and another sound detected
     //Serial.println("People made another sound");
     nSoundDetected = nSoundEvents;                              //counter back to nSoundEvents
   }
@@ -259,11 +255,11 @@ void checkPresent() {
 }
 
 void setup() {
-
   Serial.begin(9600);
-  while (!Serial);
-  Serial.println("Lab 2 Starting");
 
+  while (!Serial);
+  
+  Serial.println("Lab 2 Starting");
   pinMode(FAN_PIN, OUTPUT);
   pinMode(PIR_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(PIR_PIN), setPresent, CHANGE);
@@ -281,7 +277,6 @@ void setup() {
 }
 
 void loop() {
-
   float speed = 0;
   float brightness = 0;
 
@@ -289,23 +284,22 @@ void loop() {
 
   float temperature = readTemp(pinTempSensor);
 
-  delay(100);
   // Set Led Brightness proportional to temperature
-  if(temperature < maxTempLED){
-    if(temperature <= minTempLED){
+  if (temperature < maxTempLED) {
+    if (temperature <= minTempLED){
       brightness = 255;
-    }
-    else{
+    } else {
       brightness = 255 * (maxTempLED - temperature)/(maxTempLED - minTempLED);
     }
   }
+
   analogWrite(LED_PIN, brightness);
+
   // Set Fan Speed proportional to temperature
-  if(temperature >= minTempFan){
-    if(temperature > maxTempFan){
+  if (temperature >= minTempFan) {
+    if (temperature > maxTempFan) { 
       speed = 255;
-    }
-    else{
+    } else {
       speed = 255 * (temperature - minTempFan)/(maxTempFan - minTempFan);
     }
   }
