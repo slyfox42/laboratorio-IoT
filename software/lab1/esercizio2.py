@@ -4,6 +4,7 @@ import json
 
 class ConvertService(object):
     exposed = True
+    logs = []
 
     def GET(self, *path):
         if len(path) > 0 and path[0] == "convert":
@@ -16,8 +17,26 @@ class ConvertService(object):
                 "finalUnit": path[3],
                 "outputValue": output
             })
+        elif len(path) > 0 and path[0] == "log":
+            return json.dumps(self.logs)
         else:
             return "Head over to /convert to convert temperature."
+
+    def POST(self, *path):
+        if len(path) > 0 and path[0] == "log":
+            try:
+                stringBody = cherrypy.request.body.fp.read()
+                jsonBody = json.loads(stringBody)
+            except:
+                raise cherrypy.HTTPError(400, "Invalid JSON value.")
+            else:
+                if self.validateSenML(jsonBody):
+                    self.logs.append(jsonBody)
+                    return "Logs successfully posted."
+                else:
+                    raise cherrypy.HTTPError(400, "Body not in valid SenML format.")
+        else:
+            raise cherrypy.HTTPError(404, "Not Found.")
 
     @staticmethod
     def checkQuery(path):
@@ -61,6 +80,17 @@ class ConvertService(object):
                 output = (value - 32) * 5 / 9
 
         return round(output, 2)
+
+    @staticmethod
+    def validateSenML(jsonObject):
+        baseFields = ["bn", "e"]
+        recordFields = ["n", "t", "v", "u"]
+        jsonBaseFields = jsonObject.keys()
+        if jsonBaseFields == baseFields:
+            jsonRecordFields = jsonObject["e"].keys()
+            if jsonRecordFields == recordFields:
+                return True
+        return False
 
 
 if __name__ == '__main__':

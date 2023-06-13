@@ -22,16 +22,19 @@ class ConvertService(object):
         else:
             raise cherrypy.HTTPError(404, "Not Found.")
 
-    # @cherrypy.tools.json_in()
-    def POST(self, *path, **query):
+    def POST(self, *path):
         if len(path) > 0 and path[0] == "log":
             try:
                 stringBody = cherrypy.request.body.fp.read()
                 jsonBody = json.loads(stringBody)
-                self.logs.append(jsonBody)
-                return "Logs successfully posted."
             except:
                 raise cherrypy.HTTPError(400, "Invalid JSON value.")
+            else:
+                if self.validateSenML(jsonBody):
+                    self.logs.append(jsonBody)
+                    return "Logs successfully posted."
+                else:
+                    raise cherrypy.HTTPError(400, "Body not in valid SenML format.")
         else:
             raise cherrypy.HTTPError(404, "Not Found.")
 
@@ -82,13 +85,24 @@ class ConvertService(object):
 
         return round(output, 2)
 
+    @staticmethod
+    def validateSenML(jsonObject):
+        baseFields = ["bn", "e"]
+        recordFields = ["n", "t", "v", "u"]
+        jsonBaseFields = jsonObject.keys()
+        if jsonBaseFields == baseFields:
+            jsonRecordFields = jsonObject["e"].keys()
+            if jsonRecordFields == recordFields:
+                return True
+        return False
+
 
 if __name__ == '__main__':
     conf = {
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
             'tools.sessions.on': True, }
-        }
+    }
     cherrypy.tree.mount(ConvertService(), '/', conf)
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
     cherrypy.config.update({'server.socket_port': 8080})
