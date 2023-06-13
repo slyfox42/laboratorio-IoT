@@ -4,6 +4,7 @@ import json
 
 class ConvertService(object):
     exposed = True
+    logs = []
 
     def GET(self, *path, **query):
         if len(path) > 0 and path[0] == "convert":
@@ -16,8 +17,23 @@ class ConvertService(object):
                 "finalUnit": query["targetUnit"],
                 "outputValue": output
             })
+        elif len(path) > 0 and path[0] == "log":
+            return json.dumps(self.logs)
         else:
-            return "Head over to /convert to convert temperature."
+            raise cherrypy.HTTPError(404, "Not Found.")
+
+    # @cherrypy.tools.json_in()
+    def POST(self, *path, **query):
+        if len(path) > 0 and path[0] == "log":
+            try:
+                stringBody = cherrypy.request.body.fp.read()
+                jsonBody = json.loads(stringBody)
+                self.logs.append(jsonBody)
+                return "Logs successfully posted."
+            except:
+                raise cherrypy.HTTPError(400, "Invalid JSON value.")
+        else:
+            raise cherrypy.HTTPError(404, "Not Found.")
 
     @staticmethod
     def checkQuery(query):
