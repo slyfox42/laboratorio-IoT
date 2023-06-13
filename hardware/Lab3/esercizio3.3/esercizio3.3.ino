@@ -4,16 +4,19 @@
 #include "arduino_secrets.h"
 #include "utilities.h"
 
+#define pinTempSensor A0
+
+WiFiClient wifi;
+const int B = 4275;
 String broker_address = "test.mosquitto.org";
 int broker_port = 1883;
 int status = WL_IDLE_STATUS;
-
-const String base_topic = "/tiot/0";
+const String base_topic = "/tiot/8";
 const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
 DynamicJsonDocument doc_snd(capacity);
 DynamicJsonDocument doc_rec(capacity);
 
-WiFiClient wifi;
+
 
 void callback(char* topic, byte* payload, unsigned int length) {
   DeserializationError err = deserializeJson(doc_rec, (char*) payload);
@@ -40,7 +43,6 @@ PubSubClient client(broker_address.c_str(), broker_port, callback, wifi);
 //   return body;
 // }
 
-
 void setup() {
 
   Serial.begin(9600);
@@ -52,6 +54,21 @@ void setup() {
   printWifiStatus();
 }
 
+
+float readTemp(int pin) {
+  int a = analogRead(pinTempSensor);
+
+  float R = 1023.0/a-1.0;
+  float temperature = 1.0/(log(R)/B+1/298.15) - 273.15; // convert to temperature via datasheet
+  
+  Serial.print("temperature = ");
+  Serial.println(temperature);
+
+  return temperature;
+}
+
+
 void loop() {
+  float temperature = readTemp(pinTempSensor);
 
 }
