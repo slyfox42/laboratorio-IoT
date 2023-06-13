@@ -81,13 +81,14 @@ class ConvertService(object):
 
         return round(output, 2)
 
-    @staticmethod
     def validateSenML(jsonObject):
         baseFields = ["bn", "e"]
-        recordFields = ["n", "t", "v", "u"]
-        jsonBaseFields = jsonObject.keys()
+        recordFields = ["n", "t", "u", "v"]
+        jsonBaseFields = list(jsonObject.keys())
+        jsonBaseFields.sort()
         if jsonBaseFields == baseFields:
-            jsonRecordFields = jsonObject["e"].keys()
+            jsonRecordFields = list(jsonObject["e"][0].keys())
+            jsonRecordFields.sort()
             if jsonRecordFields == recordFields:
                 return True
         return False

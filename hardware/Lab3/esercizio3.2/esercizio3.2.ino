@@ -67,5 +67,6 @@ void loop() {
   int response = postTemperature(body);
   Serial.print("Response: ");
   Serial.println(response);
+  Serial.println(client.responseBody());
   delay(3000);
 }
