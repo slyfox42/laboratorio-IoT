@@ -49,7 +49,7 @@ String senMlEncode(float temperature) {
   return body;
 }
 
-int postTemperature(String body) {
+void postTemperature(String body) {
   client.beginRequest();
   client.post("/log");
   client.sendHeader("Content-Type", "application/json");
@@ -57,16 +57,17 @@ int postTemperature(String body) {
   client.beginBody();
   client.print(body);
   client.endRequest();
-
-  return client.responseStatusCode();
 }
 
 void loop() {
   float temperature = readTemp(pinTempSensor);
   String body = senMlEncode(temperature);
-  int response = postTemperature(body);
-  Serial.print("Response: ");
-  Serial.println(response);
-  Serial.println(client.responseBody());
-  delay(3000);
+  postTemperature(body);
+  int responseCode = client.responseStatusCode();
+  String responseBody = client.responseBody();
+  Serial.print("Response code: ");
+  Serial.println(responseCode);
+  Serial.print("Response body: ");
+  Serial.println(responseBody);
+  delay(5000);
 }
