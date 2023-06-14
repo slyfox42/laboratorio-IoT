@@ -14,7 +14,7 @@ HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServer
 
 int registrationTime = -1;
 const int registerTimeout = 60000;
-const int B = 4275;               // B value of the thermistor
+const int B = 4275; // B value of the thermistor
 const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
 const int capacity2 = JSON_OBJECT_SIZE(4) + JSON_ARRAY_SIZE(2) + JSON_OBJECT_SIZE(5) + 100;
 const int capacity3 = JSON_OBJECT_SIZE(1) + 100;
@@ -22,47 +22,53 @@ DynamicJsonDocument jsonResponse(capacity);
 DynamicJsonDocument deviceData(capacity);
 DynamicJsonDocument updateData(capacity3);
 
-
-void setup() {
+void setup()
+{
   Serial.begin(9600);
-  while (!Serial);
-  
+  while (!Serial)
+    ;
+
   enable_WiFi();
   connect_WiFi(wifiSsid, wifiPass);
 
   printWifiStatus();
 }
 
-float readTemp(int pin) {
+float readTemp(int pin)
+{
   int a = analogRead(pinTempSensor);
 
-  float R = 1023.0/a-1.0;
-  float temperature = 1.0/(log(R)/B+1/298.15) - 273.15; // convert to temperature via datasheet
-  
+  float R = 1023.0 / a - 1.0;
+  float temperature = 1.0 / (log(R) / B + 1 / 298.15) - 273.15; // convert to temperature via datasheet
+
   Serial.print("temperature = ");
   Serial.println(temperature);
 
   return temperature;
 }
 
-String senMlEncode(float temperature) {
+String senMlEncode(float temperature)
+{
   String body;
   jsonResponse.clear();
-  jsonResponse["bn"] =  "ArduinoGroupX";
-  jsonResponse["e"][0]["t"] = int(millis()/1000);
-  jsonResponse["e"][0]["n"] = "temperature"; 
-  jsonResponse["e"][0]["v"] = temperature; 
-  jsonResponse["e"][0]["u"] = "Cel"; 
+  jsonResponse["bn"] = "ArduinoGroupX";
+  jsonResponse["e"][0]["t"] = int(millis() / 1000);
+  jsonResponse["e"][0]["n"] = "temperature";
+  jsonResponse["e"][0]["v"] = temperature;
+  jsonResponse["e"][0]["u"] = "Cel";
   serializeJson(jsonResponse, body);
 
   return body;
 }
 
-void registerDevice() {
+void registerDevice()
+{
   int timeNow = millis();
   String body;
-  if (registrationTime != -1) {
-    if ((timeNow - registrationTime) < registerTimeout) {
+  if (registrationTime != -1)
+  {
+    if ((timeNow - registrationTime) < registerTimeout)
+    {
       return;
     }
     Serial.println("Refreshing device registration...");
@@ -77,14 +83,16 @@ void registerDevice() {
     catalogClient.beginBody();
     catalogClient.print(body);
     catalogClient.endRequest();
-  } else {
+  }
+  else
+  {
     Serial.println("Registering device...");
     jsonResponse.clear();
-    jsonResponse["deviceID"] =  uuid;
+    jsonResponse["deviceID"] = uuid;
     jsonResponse["endPoints"][0] = "/log";
-    jsonResponse["availableResources"][0] = "Motion Sensor"; 
-    jsonResponse["availableResources"][1] = "Temperature"; 
-    jsonResponse["timestamp"] = timeNow; 
+    jsonResponse["sensors"][0] = "Motion Sensor";
+    jsonResponse["sensors"][1] = "Temperature";
+    jsonResponse["timestamp"] = timeNow;
     serializeJson(deviceData, body);
     postData(catalogClient, "/device", body);
   }
@@ -96,7 +104,8 @@ void registerDevice() {
   Serial.println(responseBody);
 }
 
-void postData(HttpClient client, String path, String body) {
+void postData(HttpClient client, String path, String body)
+{
   client.beginRequest();
   client.post(path);
   client.sendHeader("Content-Type", "application/json");
@@ -106,7 +115,8 @@ void postData(HttpClient client, String path, String body) {
   client.endRequest();
 }
 
-void loop() {
+void loop()
+{
   float temperature = readTemp(pinTempSensor);
   String temperatureData = senMlEncode(temperature);
   postData(temperatureClient, "/log", temperatureData);
