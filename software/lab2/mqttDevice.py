@@ -2,11 +2,13 @@ import paho.mqtt.client as PahoMQTT
 import time
 import uuid
 import json
+import random
 
 
 class MySubscriber:
 		def __init__(self, clientID):
 			self.clientID = clientID
+			self.id = 1234
 			# create an instance of paho.mqtt.client
 			self._paho_mqtt = PahoMQTT.Client(clientID, False) 
 
@@ -14,7 +16,7 @@ class MySubscriber:
 			self._paho_mqtt.on_connect = self.myOnConnect
 			self._paho_mqtt.on_message = self.myOnMessageReceived
 
-			self.topic = '/tiot/8/catalog/subscription/devices/subscription/1234'
+			self.topic = '/tiot/8/catalog/subscription/devices/subscription'
 			self.messageBroker = 'mqtt.eclipseprojects.io'
 
 
@@ -22,8 +24,8 @@ class MySubscriber:
 			#manage connection to broker
 			self._paho_mqtt.connect(self.messageBroker, 1883)
 			self._paho_mqtt.loop_start()
-			# subscribe for a topic
-			self._paho_mqtt.subscribe(self.topic, 2)
+			self._paho_mqtt.subscribe(f"{self.topic}{self.id}",2)
+
 
 		def stop (self):
 			self._paho_mqtt.unsubscribe(self.topic)
@@ -42,23 +44,50 @@ class MySubscriber:
 			print ("Topic:'" + msg.topic+"', QoS: '"+str(msg.qos)+"' Message: '"+str(msg.payload) + "'")
 
 
+		def runner(self):
+			deviceIDs = []
+			while True:
+				# Randomly decide whether to register a new device or update an existing one
+				if len(deviceIDs) == 0 or random.random() < 0.5:
+					# Register a new device
+					message = {
+						"deviceID": self.id,
+						"endPoints": "/tiot/8/catalog/subscription/devices/subscription",
+						"availableResources": ["Temperature", "Humidity", "Motion sensor"],
+					}
+					deviceIDs.append(message["deviceID"])
+					self._paho_mqtt.subscribe(f"{self.topic}{message['deviceID']}", 2)
+					self.myPublish(self.topic, message)
+					
+				else:
+					# Update an existing device
+					deviceID = random.choice(deviceIDs)
+					message = {
+						"deviceID": deviceID,
+						"endPoints": "/tiot/8/catalog/subscription/devices/subscription",
+						"availableResources": ["Temperature", "Humidity", "Motion sensor"],
+					}
+					deviceIDs.append(message["deviceID"])
+					self.myPublish(self.topic, json.dumps(message))
+         
+				
+				# Sleep for a minute
+				for _ in range(61):
+					time.sleep(1)
+				
+
 
 if __name__ == "__main__":
-	test = MySubscriber("MySubscriber 1")
-	test.start()
+	iotDevice = MySubscriber("MySubscriber 1")
+	iotDevice.start()
 
 	message = {
 		"deviceID": "1234",
         "endPoints": "/tiot/8/catalog/subscription/devices/subscription/1234",
         "availableResources": "temperature",
 	}
- 
-	test.myPublish("/tiot/8/catalog/subscription/devices/subscription", message)
-	
-	print("helloo \n")
- 
-	for i in range(11):
-		time.sleep(1)
+ 	
+	iotDevice.runner()
      
      
  

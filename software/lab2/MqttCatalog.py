@@ -44,6 +44,7 @@ class Catalog(object):
     def myOnMessageReceived (self, paho_mqtt , userdata, msg):
 		# A new message is received
         data = json.loads(msg.payload)
+        print(data)
         topic = f"{self.topic}/{data['deviceID']}"
         device = {
             "deviceID": data['deviceID'],
