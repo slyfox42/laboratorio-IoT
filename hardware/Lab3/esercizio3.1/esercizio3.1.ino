@@ -53,11 +53,8 @@ void process(WiFiClient client) {
   reqType.trim();
   String url = client.readStringUntil(' ');
   url.trim();
-  Serial.print("Url: ");
-  Serial.println(url);
   if (url.startsWith("/led/")) { 
-      // TODO: implement more robust check
-    String ledValue = url.substring(5);
+    String ledValue = url.substring(5,6);
     if (ledValue == "0" || ledValue == "1") {
       int intValue = ledValue.toInt();
       digitalWrite(ledPin, intValue); // turn the led on or off
