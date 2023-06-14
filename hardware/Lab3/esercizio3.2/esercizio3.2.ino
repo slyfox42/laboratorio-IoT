@@ -1,21 +1,29 @@
 #include <WiFiNINA.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
+#include <UUID.h>
 #include "utilities.h"
 #include "arduino_secrets.h"
 
 #define pinTempSensor A0
 
+UUID uuid;
 WiFiClient wifi;
-HttpClient client = HttpClient(wifi, serverAddress, serverPort);
+HttpClient catalogClient = HttpClient(wifi, serverAddress, catalogServerPort);
+HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServerPort);
 
+int registrationTime = -1;
+const int registerTimeout = 60000;
 const int B = 4275;               // B value of the thermistor
 const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
+const int capacity2 = JSON_OBJECT_SIZE(4) + JSON_ARRAY_SIZE(2) + JSON_OBJECT_SIZE(5) + 100;
+const int capacity3 = JSON_OBJECT_SIZE(1) + 100;
 DynamicJsonDocument jsonResponse(capacity);
+DynamicJsonDocument deviceData(capacity);
+DynamicJsonDocument updateData(capacity3);
 
 
 void setup() {
-
   Serial.begin(9600);
   while (!Serial);
   
@@ -50,9 +58,47 @@ String senMlEncode(float temperature) {
   return body;
 }
 
-void postTemperature(String body) {
+void registerDevice() {
+  int timeNow = millis();
+  String body;
+  if (registrationTime != -1) {
+    if ((timeNow - registrationTime) < registerTimeout) {
+      return;
+    }
+    Serial.println("Refreshing device registration...");
+    updateData.clear();
+    updateData["timestamp"] = timeNow;
+    serializeJson(updateData, body);
+
+    catalogClient.beginRequest();
+    catalogClient.put("/device");
+    catalogClient.sendHeader("Content-Type", "application/json");
+    catalogClient.sendHeader("Content-Length", body.length());
+    catalogClient.beginBody();
+    catalogClient.print(body);
+    catalogClient.endRequest();
+  } else {
+    Serial.println("Registering device...");
+    jsonResponse.clear();
+    jsonResponse["deviceID"] =  uuid;
+    jsonResponse["endPoints"][0] = "/log";
+    jsonResponse["availableResources"][0] = "Motion Sensor"; 
+    jsonResponse["availableResources"][1] = "Temperature"; 
+    jsonResponse["timestamp"] = timeNow; 
+    serializeJson(deviceData, body);
+    postData(catalogClient, "/device", body);
+  }
+  int responseCode = catalogClient.responseStatusCode();
+  String responseBody = catalogClient.responseBody();
+  Serial.print("Response code: ");
+  Serial.println(responseCode);
+  Serial.print("Response body: ");
+  Serial.println(responseBody);
+}
+
+void postData(HttpClient client, String path, String body) {
   client.beginRequest();
-  client.post("/log");
+  client.post(path);
   client.sendHeader("Content-Type", "application/json");
   client.sendHeader("Content-Length", body.length());
   client.beginBody();
@@ -62,10 +108,10 @@ void postTemperature(String body) {
 
 void loop() {
   float temperature = readTemp(pinTempSensor);
-  String body = senMlEncode(temperature);
-  postTemperature(body);
-  int responseCode = client.responseStatusCode();
-  String responseBody = client.responseBody();
+  String temperatureData = senMlEncode(temperature);
+  postData(temperatureClient, "/log", temperatureData);
+  int responseCode = temperatureClient.responseStatusCode();
+  String responseBody = temperatureClient.responseBody();
   Serial.print("Response code: ");
   Serial.println(responseCode);
   Serial.print("Response body: ");
