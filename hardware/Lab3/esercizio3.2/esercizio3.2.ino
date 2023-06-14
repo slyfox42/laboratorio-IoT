@@ -1,13 +1,11 @@
 #include <WiFiNINA.h>
 #include <ArduinoHttpClient.h>
 #include <ArduinoJson.h>
-#include <UUID.h>
 #include "utilities.h"
 #include "arduino_secrets.h"
 
 #define pinTempSensor A0
 
-UUID uuid;
 WiFiClient wifi;
 HttpClient catalogClient = HttpClient(wifi, serverAddress, catalogServerPort);
 HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServerPort);
@@ -61,7 +59,7 @@ String senMlEncode(float temperature) {
 void registerDevice() {
   int timeNow = millis();
   String body;
-  String deviceId = uuid.toCharArray();
+  String deviceId = "ArduinoGroup8";
   if (registrationTime != -1) {
     if ((timeNow - registrationTime) < registerTimeout) {
       return;
@@ -70,7 +68,7 @@ void registerDevice() {
     serializeJson(deviceData, body);
 
     catalogClient.beginRequest();
-    catalogClient.put(("/device/") + deviceId);
+    catalogClient.put("/device/" + deviceId);
     catalogClient.sendHeader("Content-Type", "application/json");
     catalogClient.sendHeader("Content-Length", body.length());
     catalogClient.beginBody();
