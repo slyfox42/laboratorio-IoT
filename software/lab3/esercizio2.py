@@ -16,7 +16,7 @@ class MQTTSubscriber:
         return response.json()
 
     @staticmethod
-    def registerAsService(self):
+    def registerAsService():
         serviceData = {
           "serviceID": "arduinoTempSub",
           "description": "Arduino temperature mqtt subscriber",
@@ -31,6 +31,17 @@ class MQTTSubscriber:
 
         return
 
+    def getTopics(self, deviceID):
+        response = requests.get("http://localhost ")
+    @staticmethod
+    def getAllTopics(self):
+       devices = self.getSubscriptions()
+       topics =
+
+        if response.status_code != 200:
+            raise Exception("Unable to get Arduino topics from catalog!")
+
+        return response.json().endPoints
 
 
 # # The callback for when the client receives a CONNACK response from the server.
