@@ -61,17 +61,16 @@ String senMlEncode(float temperature) {
 void registerDevice() {
   int timeNow = millis();
   String body;
+  String deviceId = uuid.toCharArray();
   if (registrationTime != -1) {
     if ((timeNow - registrationTime) < registerTimeout) {
       return;
     }
     Serial.println("Refreshing device registration...");
-    updateData.clear();
-    updateData["timestamp"] = timeNow;
-    serializeJson(updateData, body);
+    serializeJson(deviceData, body);
 
     catalogClient.beginRequest();
-    catalogClient.put("/device");
+    catalogClient.put(("/device/") + deviceId);
     catalogClient.sendHeader("Content-Type", "application/json");
     catalogClient.sendHeader("Content-Length", body.length());
     catalogClient.beginBody();
@@ -79,15 +78,15 @@ void registerDevice() {
     catalogClient.endRequest();
   } else {
     Serial.println("Registering device...");
-    jsonResponse.clear();
-    jsonResponse["deviceID"] =  uuid;
-    jsonResponse["endPoints"][0] = "/log";
-    jsonResponse["availableResources"][0] = "Motion Sensor"; 
-    jsonResponse["availableResources"][1] = "Temperature"; 
-    jsonResponse["timestamp"] = timeNow; 
+    deviceData.clear();
+    deviceData["deviceID"] =  deviceId;
+    deviceData["endPoints"][0] = "/log";
+    deviceData["sensors"][0] = "Motion Sensor"; 
+    deviceData["sensors"][1] = "Temperature"; 
     serializeJson(deviceData, body);
     postData(catalogClient, "/device", body);
   }
+  registrationTime = timeNow;
   int responseCode = catalogClient.responseStatusCode();
   String responseBody = catalogClient.responseBody();
   Serial.print("Response code: ");
@@ -107,6 +106,7 @@ void postData(HttpClient client, String path, String body) {
 }
 
 void loop() {
+  registerDevice();
   float temperature = readTemp(pinTempSensor);
   String temperatureData = senMlEncode(temperature);
   postData(temperatureClient, "/log", temperatureData);
