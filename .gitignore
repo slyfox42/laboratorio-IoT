@@ -1,2 +1,3 @@
 **/*.pdf
 **/libraries/*
+**/arduino_secrets.h
