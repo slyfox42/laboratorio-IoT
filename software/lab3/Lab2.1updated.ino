@@ -25,6 +25,7 @@ const String base_topic = "/tiot/group8";
 const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
 DynamicJsonDocument jsonReceived(capacity);
 DynamicJsonDocument jsonResponse(capacity);
+DynamicJsonDocument deviceData(capacity);
 PubSubClient client(broker_address.c_str(), broker_port, callback, wifi);
 
 int registrationTime = -1;
@@ -215,6 +216,7 @@ void registerDevice() {
     serializeJson(deviceData, body);
     postData(catalogClient, "/device", body);
     getServices();
+    postData(catalogClient, "/service", body);
   }
   int responseCode = catalogClient.responseStatusCode();
   String responseBody = catalogClient.responseBody();
@@ -223,8 +225,6 @@ void registerDevice() {
   Serial.print("Response body: ");
   Serial.println(responseBody);
 }
-
-//LAB 2.1 HW functions
 
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
