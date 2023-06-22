@@ -215,7 +215,16 @@ void registerDevice() {
     jsonResponse["timestamp"] = timeNow; 
     serializeJson(deviceData, body);
     postData(catalogClient, "/device", body);
-    getServices();
+	getServices();
+    Serial.println("Registering services...");
+    jsonResponse.clear();
+    jsonResponse["serviceID"] =  uuid;
+    jsonResponse["endPoints"][0] = "/log";
+    jsonResponse["description"][0] = "Motion Sensor"; 
+    jsonResponse["description"][1] = "Temperature";
+    jsonResponse["description"][2] = "Microphone";
+    jsonResponse["timestamp"] = timeNow; 
+    serializeJson(deviceData, body);
     postData(catalogClient, "/service", body);
   }
   int responseCode = catalogClient.responseStatusCode();
