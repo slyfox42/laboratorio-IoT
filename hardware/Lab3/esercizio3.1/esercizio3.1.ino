@@ -3,11 +3,11 @@
 #include "arduino_secrets.h"
 #include "utilities.h"
 
-#define pinTempSensor A0 
+#define pinTempSensor A0
 #define ledPin A2
 
-WiFiServer server(80);            //server socket
-const int B = 4275;            // B value of the thermistor
+WiFiServer server(80); // server socket
+const int B = 4275;    // B value of the thermistor
 
 WiFiClient client = server.available();
 
@@ -19,13 +19,12 @@ void setup() {
   Serial.begin(9600);
   pinMode(ledPin, OUTPUT);
   while (!Serial);
-  
+
   enable_WiFi();
   connect_WiFi(wifiSsid, wifiPass);
 
   server.begin();
   printWifiStatus();
-
 }
 
 void loop() {
@@ -40,9 +39,9 @@ void loop() {
 // read temperature using the temp sensor
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
-  float R = 1023.0/a-1.0;
-  float temperature = 1.0/(log(R)/B+1/298.15)-273.15; // convert to temperature via datasheet
-  
+  float R = 1023.0 / a - 1.0;
+  float temperature = 1.0 / (log(R) / B + 1 / 298.15) - 273.15; // convert to temperature via datasheet
+
   return temperature;
 }
 
@@ -53,28 +52,26 @@ void process(WiFiClient client) {
   reqType.trim();
   String url = client.readStringUntil(' ');
   url.trim();
-  if (url.startsWith("/led/")) { 
-    String ledValue = url.substring(5,6);
+  if (url.startsWith("/led/")) {
+    String ledValue = url.substring(5, 6);
     if (ledValue == "0" || ledValue == "1") {
       int intValue = ledValue.toInt();
       digitalWrite(ledPin, intValue); // turn the led on or off
 
       String body = senMlEncode("led", intValue, "");
-      
+
       printResponse(client, 200, body);
     } else {
       printResponse(client, 400, "Invalid led value.");
     }
-
   } else if (url.startsWith("/temperature")) {
-      int temperature = readTemp(pinTempSensor);
-      String body = senMlEncode("temperature", temperature, "Cel");
-      printResponse(client, 200, body);
+    int temperature = readTemp(pinTempSensor);
+    String body = senMlEncode("temperature", temperature, "Cel");
+    printResponse(client, 200, body);
   } else {
     printResponse(client, 404, "Not found.");
   }
 }
-
 
 String senMlEncode(String option, float value, String unit) {
   if (option == "led") {
@@ -82,11 +79,11 @@ String senMlEncode(String option, float value, String unit) {
   }
   String body;
   jsonResponse.clear();
-  jsonResponse["bn"] =  "ArduinoGroupX";
-  jsonResponse["e"][0]["t"] = int(millis()/1000);
+  jsonResponse["bn"] = "ArduinoGroup8";
+  jsonResponse["e"][0]["t"] = int(millis() / 1000);
   jsonResponse["e"][0]["n"] = option;
-  jsonResponse["e"][0]["v"] = value; 
-  jsonResponse["e"][0]["u"] = unit; 
+  jsonResponse["e"][0]["v"] = value;
+  jsonResponse["e"][0]["u"] = unit;
   serializeJson(jsonResponse, body);
 
   return body;
