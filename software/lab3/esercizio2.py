@@ -1,71 +1,94 @@
 import paho.mqtt.client as mqtt
 import requests
+import json
+
+resourceCatalogAddress = "http://localhost:8080"
+
+
+def onConnect(client, userdata, flags, rc):
+    print(f'Connected with result code {str(rc)}')
+
+
+def onMessage(client, userdata, msg):
+    data = json.loads(msg.payload)
+    print("Received temperature data.")
+    print(data)
 
 
 class MQTTSubscriber:
+    def __init__(self, serviceID):
+        self.serviceID = serviceID
+        self.client = mqtt.Client()
+        self.client.on_connect = onConnect
+        self.client.on_message = onMessage
 
     @staticmethod
     def getSubscriptions():
-        response = requests.get("http://localhost:8080/devices")
+        response = requests.get(f'{resourceCatalogAddress}/')
 
         if response.status_code != 200:
-            raise Exception("Unable to retrieve available subscriptions from catalog!")
+            print("Unable to retrieve available subscriptions from catalog!")
+            print(response.status_code)
+            return
 
         print("Fetched available subscriptions!")
+        jsonData = response.json()
 
-        return response.json()
+        return jsonData["subscriptions"]
 
-    @staticmethod
-    def registerAsService():
+    def registerAsService(self, subscriptions):
+        serviceAddress = subscriptions["REST"]["service"]
         serviceData = {
-          "serviceID": "arduinoTempSub",
+          "serviceID": self.serviceID,
           "description": "Arduino temperature mqtt subscriber",
           "endPoints": None
         }
-        response = requests.post("http://localhost:8080/service", serviceData)
+        response = requests.post(serviceAddress, json.dumps(serviceData))
 
         if response.status_code != 200:
-            raise Exception("Unable to register as service to the catalog!")
+            print("Error: Unable to register as service to the catalog!")
+            print(response.status_code)
+            return
 
         print("Successfully registered as service!")
 
         return
 
-    def getTopics(self, deviceID):
-        response = requests.get("http://localhost ")
     @staticmethod
-    def getAllTopics(self):
-       devices = self.getSubscriptions()
-       topics =
+    def getEndpoints():
+        response = requests.get(f'{resourceCatalogAddress}/devices')
 
         if response.status_code != 200:
-            raise Exception("Unable to get Arduino topics from catalog!")
+            print("Error: Unable to get devices list!")
+            print(response.status_code)
+            return
 
-        return response.json().endPoints
+        jsonData = response.json()
+        deviceList = list(jsonData)
+        deviceID = jsonData[deviceList[0]]["deviceID"]
+
+        response = requests.get(f'{resourceCatalogAddress}/devices/{deviceID}')
+
+        if response.status_code != 200:
+            print("Error: Unable to get device data!")
+            print(response.status_code)
+            return
+
+        jsonData = response.json()
+
+        return jsonData["endPoints"]
+
+    def start(self, subscriptions, endpoints):
+        mqttAttributes = subscriptions["MQTT"]["device"]
+        self.client.connect(mqttAttributes["hostname"], mqttAttributes["port"])
+        self.client.loop_start()
+        for endpoint in endpoints:
+            self.client.subscribe(f'{mqttAttributes["topic"]}/{endpoint}', 2)
 
 
-# # The callback for when the client receives a CONNACK response from the server.
-# def on_connect(client, userdata, flags, rc):
-#     print("Connected with result code "+str(rc))
-#
-#     # Subscribing in on_connect() means that if we lose the connection and
-#     # reconnect then subscriptions will be renewed.
-#     client.subscribe("$SYS/#")
-#
-#
-# # The callback for when a PUBLISH message is received from the server.
-# def on_message(client, userdata, msg):
-#     print(msg.topic+" "+str(msg.payload))
-#
-#
-# client = mqtt.Client()
-# client.on_connect = on_connect
-# client.on_message = on_message
-#
-# client.connect("test.mosquitto.org", 1883, 60)
-#
-# # Blocking call that processes network traffic, dispatches callbacks and
-# # handles reconnecting.
-# # Other loop*() functions are available that give a threaded interface and a
-# # manual interface.
-# client.loop_forever()
+if __name__ == "main":
+    subscriber = MQTTSubscriber("arduinoTempSub")
+    subscriptions = subscriber.getSubscriptions()
+    endpoints = subscriber.getEndpoints()
+    subscriber.registerAsService(subscriptions)
+    subscriber.start(subscriptions, endpoints)

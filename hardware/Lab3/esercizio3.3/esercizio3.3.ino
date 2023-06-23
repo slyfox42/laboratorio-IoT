@@ -128,7 +128,7 @@ void registerDevice() {
     getSubscription();
     deviceData.clear();
     deviceData["deviceID"] = deviceId;
-    deviceData["endPoints"][0] = "/log";
+    deviceData["endPoints"][0] = "/temperature";
     deviceData["sensors"][0] = "Motion Sensor";
     deviceData["sensors"][1] = "Temperature";
     serializeJson(deviceData, body);
