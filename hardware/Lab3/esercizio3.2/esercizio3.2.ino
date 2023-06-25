@@ -21,9 +21,11 @@ DynamicJsonDocument deviceData(capacity);
 DynamicJsonDocument updateData(capacity);
 DynamicJsonDocument subscriptionData(capacity);
 
-void setup() {
+void setup()
+{
   Serial.begin(9600);
-  while (!Serial);
+  while (!Serial)
+    ;
 
   enable_WiFi();
   connect_WiFi(wifiSsid, wifiPass);
@@ -31,7 +33,8 @@ void setup() {
   printWifiStatus();
 }
 
-float readTemp(int pin) {
+float readTemp(int pin)
+{
   int a = analogRead(pinTempSensor);
 
   float R = 1023.0 / a - 1.0;
@@ -43,7 +46,8 @@ float readTemp(int pin) {
   return temperature;
 }
 
-String senMlEncode(float temperature) {
+String senMlEncode(float temperature)
+{
   String body;
   jsonResponse.clear();
   jsonResponse["bn"] = "ArduinoGroup8";
@@ -56,7 +60,8 @@ String senMlEncode(float temperature) {
   return body;
 }
 
-String getSubscription() {
+String getSubscription()
+{
   catalogClient.beginRequest();
   catalogClient.get("/");
   int statusCode = catalogClient.responseStatusCode();
@@ -67,33 +72,37 @@ String getSubscription() {
   return subscriptionData["subscriptions"]["REST"]["device"];
 }
 
-void registerDevice() {
+void registerDevice()
+{
   int timeNow = millis();
   String body;
-  String deviceId = "arduinoGroup8";
-  if (registrationTime != -1) {
-    if ((timeNow - registrationTime) < registerTimeout) {
+  String deviceId = "ArduinoGroup8";
+  if (registrationTime != -1)
+  {
+    if ((timeNow - registrationTime) < registerTimeout)
+    {
       return;
     }
     Serial.println("Refreshing device registration...");
     serializeJson(deviceData, body);
 
     catalogClient.beginRequest();
-    catalogClient.put(subscriptionAddress);
+    catalogClient.put("/device/" + deviceId);
     catalogClient.sendHeader("Content-Type", "application/json");
     catalogClient.sendHeader("Content-Length", body.length());
     catalogClient.beginBody();
     catalogClient.print(body);
     catalogClient.endRequest();
-  } else {
+  }
+  else
+  {
     Serial.println("Registering device...");
-    subscriptionAddress = getSubscription();
-    deviceData.clear();
-    deviceData["deviceID"] = deviceId;
-    deviceData["endPoints"]["MQTT"]["Led"] = "resources/led";
-    deviceData["endPoints"]["MQTT"]["Temperature"] = "resources/temperature";
-    deviceData["availableResources"][0] = "Motion Sensor";
-    deviceData["availableResources"][1] = "Temperature";
+    jsonResponse.clear();
+    jsonResponse["deviceID"] = uuid;
+    jsonResponse["endPoints"][0] = "/log";
+    jsonResponse["availableResources"][0] = "Motion Sensor";
+    jsonResponse["availableResources"][1] = "Temperature";
+    jsonResponse["timestamp"] = timeNow;
     serializeJson(deviceData, body);
     postData(catalogClient, subscriptionAddress, body);
   }
@@ -106,7 +115,8 @@ void registerDevice() {
   Serial.println(responseBody);
 }
 
-void postData(HttpClient client, String path, String body) {
+void postData(HttpClient client, String path, String body)
+{
   client.beginRequest();
   client.post(path);
   client.sendHeader("Content-Type", "application/json");
@@ -116,7 +126,8 @@ void postData(HttpClient client, String path, String body) {
   client.endRequest();
 }
 
-void loop() {
+void loop()
+{
   registerDevice();
   float temperature = readTemp(pinTempSensor);
   String temperatureData = senMlEncode(temperature);
