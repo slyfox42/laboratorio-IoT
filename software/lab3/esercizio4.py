@@ -59,7 +59,7 @@ class remoteController:
         # A new message is received
         print("Topic:'" + msg.topic + "', QoS: '" + str(msg.qos) + "' Message: '" + str(msg.payload) + "'")
         payload = json.loads(msg.payload)
-        if msg.topic is "/tiot/group8/temperature":
+        if msg.topic is "tiot/group8/temperature":
             speed = 0
             brightness = 0
             temperature = payload["e"][0]["v"]
@@ -70,19 +70,19 @@ class remoteController:
                     brightness = 255 * (self.maxTempLED - temperature) / (self.maxTempLED - self.minTempLED)
 
             message = {"bn": "Cloud", "e": [{"n": "brightness", "u": None, "t": time.time(), "v": brightness}]}
-            self.myPublish("/tiot/group8/led", message)
+            self.myPublish("tiot/group8/led", message)
             if temperature >= self.minTempFan:
                 if temperature > self.maxTempFan:
                     speed = 255
                 else:
                     speed = 255 * (temperature - self.minTempFan) / (self.maxTempFan - self.minTempFan)
             message = {"bn": "Cloud", "e": [{"n": "speed", "u": None, "t": time.time(), "v": speed}]}
-            self.myPublish("/tiot/group8/fan", message)
-        if msg.topic is "/tiot/group8/sound":
+            self.myPublish("tiot/group8/fan", message)
+        if msg.topic is "tiot/group8/sound":
             self.sound = payload["e"][0]["v"]
             self.people = self.sound or self.motion
             self.changeThreshold()
-        if msg.topic is "/tiot/group8/motion":
+        if msg.topic is "tiot/group8/motion":
             self.motion = payload["e"][0]["v"]
             self.people = self.motion or self.sound
             self.changeThreshold()
@@ -134,6 +134,18 @@ class remoteController:
 
         return
 
+    def start(self, subscriptions):
+        mqttAttributes = subscriptions["MQTT"]["device"]
+        self.client.connect(mqttAttributes["hostname"], mqttAttributes["port"])
+        self.client.loop_start()
+
+        self.client.subscribe("tiot/group8/temperature")
+        self.client.subscribe("tiot/group8/sound")
+        self.client.subscribe("tiot/group8/motion")
+
 
 if __name__ == "__main__":
     controller = remoteController("remoteControllerGroup8")
+    subscriptions = controller.getSubscriptions()
+    controller.registerAsService(subscriptions)
+    controller.start(subscriptions)
