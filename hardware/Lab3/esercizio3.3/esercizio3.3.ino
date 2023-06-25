@@ -144,14 +144,14 @@ void registerDevice() {
   Serial.println(responseBody);
 }
 
-void postData(HttpClient mqttClient, String path, String body) {
-  mqttClient.beginRequest();
-  mqttClient.post(path);
-  mqttClient.sendHeader("Content-Type", "application/json");
-  mqttClient.sendHeader("Content-Length", body.length());
-  mqttClient.beginBody();
-  mqttClient.print(body);
-  mqttClient.endRequest();
+void postData(HttpClient catalogClient, String path, String body) {
+  catalogClient.beginRequest();
+  catalogClient.post(path);
+  catalogClient.sendHeader("Content-Type", "application/json");
+  catalogClient.sendHeader("Content-Length", body.length());
+  catalogClient.beginBody();
+  catalogClient.print(body);
+  catalogClient.endRequest();
 }
 
 void reconnect() {
