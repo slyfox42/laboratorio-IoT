@@ -76,11 +76,4 @@ class MySubscriber:
 if __name__ == "__main__":
 	iotDevice = MySubscriber("MySubscriber 1")
 	iotDevice.start()
-
-	# message = {
-	# 	"deviceID": "1234",
-	# 	"endPoints": "/tiot/8/catalog/subscription/devices/subscription/1234",
-	# 	"availableResources": "temperature",
-	# }
-
 	iotDevice.runner()
