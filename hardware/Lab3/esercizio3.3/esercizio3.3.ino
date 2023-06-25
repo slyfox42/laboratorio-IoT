@@ -1,26 +1,33 @@
 #include <WiFiNINA.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
+#include <ArduinoHttpClient.h>
 #include "arduino_secrets.h"
 #include "utilities.h"
+#include "UUID.h"
 
 #define pinTempSensor A0
 #define ledPin A2
 
 WiFiClient wifi;
+HttpClient catalogClient = HttpClient(wifi, serverAddress, serverPort);
+PubSubClient mqttClient(wifi);
+
+String subscriptionAddress;
+String mqtt_base_topic: "tiot/group8"
 const int B = 4275;
-String broker_address = "test.mosquitto.org";
-int broker_port = 1883;
-const String base_topic = "/tiot/group8";
-const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
+int registrationTime = -1;
+const int registerTimeout = 60000;
+const int capacity = 256;
+
 DynamicJsonDocument jsonReceived(capacity);
 DynamicJsonDocument jsonResponse(capacity);
+DynamicJsonDocument deviceData(capacity);
+DynamicJsonDocument subscriptionData(capacity);
 
-
-
-void callback(char* topic, byte* payload, unsigned int length) {
-  if (topic == (base_topic + "/led")) {
-    DeserializationError err = deserializeJson(jsonReceived, (char*) payload);
+void callback(char *topic, byte *payload, unsigned int length) {
+  if (topic == (mqtt_base_topic + "/led")) {
+    DeserializationError err = deserializeJson(jsonReceived, (char *)payload);
     if (err) {
       Serial.print(F("deserializeJson() failed with code "));
       Serial.println(err.c_str());
@@ -38,19 +45,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
       }
     }
   }
-  
 }
 
-PubSubClient client(broker_address.c_str(), broker_port, callback, wifi);
 
 String senMlEncode(float temperature) {
   String body;
   jsonResponse.clear();
-  jsonResponse["bn"] =  "ArduinoGroupX";
-  jsonResponse["e"][0]["t"] = int(millis()/1000);
-  jsonResponse["e"][0]["n"] = "temperature"; 
-  jsonResponse["e"][0]["v"] = temperature; 
-  jsonResponse["e"][0]["u"] = "Cel"; 
+  jsonResponse["bn"] = "ArduinoGroup8";
+  jsonResponse["e"][0]["t"] = int(millis() / 1000);
+  jsonResponse["e"][0]["n"] = "temperature";
+  jsonResponse["e"][0]["v"] = temperature;
+  jsonResponse["e"][0]["u"] = "Cel";
   serializeJson(jsonResponse, body);
 
   return body;
@@ -67,26 +72,95 @@ void setup() {
   printWifiStatus();
 }
 
-
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
-  float R = 1023.0/a-1.0;
-  float temperature = 1.0/(log(R)/B+1/298.15) - 273.15; // convert to temperature via datasheet
-  
+  float R = 1023.0 / a - 1.0;
+  float temperature = 1.0 / (log(R) / B + 1 / 298.15) - 273.15; // convert to temperature via datasheet
+
   Serial.print("temperature = ");
   Serial.println(temperature);
 
   return temperature;
 }
 
+// get available subscriptions from Catalog
+// "subscription": {
+//   "MQTT": {
+//     "device": {
+//       "hostname": "test.mosquitto.org",
+//       "port": "1883",
+//       "topic": "tiot/group8/catalog/devices/subscription"
+//     }
+//   }
+// }
+String getSubscription() {
+  catalogClient.beginRequest();
+  catalogClient.get("/");
+  int statusCode = catalogClient.responseStatusCode();
+  String response = catalogClient.responseBody();
+  subscriptionData.clear();
+  deserializeJson(subscriptionData, response);
+
+  subscriptionAddress = subscriptionData["subscriptions"]["MQTT"]["device"]["topic"].as<String>(); // needed to remove ambiguity when extracting data from json
+  String broker_address = subscriptionData["subscriptions"]["MQTT"]["device"]["hostname"];
+  int broker_port = subscriptionData["subscriptions"]["MQTT"]["device"]["port"];
+
+  mqttClient.setServer(broker_address.c_str(), broker_port);
+  mqttClient.setCallback(callback);
+}
+
+// register the device using the subscription endpoints obtained from catalog. Otherwise, refresh the subscription every minute
+void registerDevice() {
+  int timeNow = millis();
+  String body;
+  String deviceId = "arduinoGroup8";
+  if (registrationTime != -1) {
+    if ((timeNow - registrationTime) < registerTimeout) {
+      return;
+    }
+    Serial.println("Refreshing device registration...");
+    serializeJson(deviceData, body);
+
+    mqttClient.publish(subscriptionAddress.c_str(), body.c_str());
+  } else {
+    Serial.println("Registering device...");
+    getSubscription();
+    deviceData.clear();
+    deviceData["deviceID"] = deviceId;
+    deviceData["endPoints"]["MQTT"]["Led"] = "resources/led";
+    deviceData["endPoints"]["MQTT"]["Temperature"] = "resources/temperature";
+    deviceData["availableResources"][0] = "Motion Sensor";
+    deviceData["availableResources"][1] = "Temperature";
+    serializeJson(deviceData, body);
+    mqttClient.publish(subscriptionAddress.c_str(), body.c_str());
+  }
+  registrationTime = timeNow;
+  int responseCode = catalogClient.responseStatusCode();
+  String responseBody = catalogClient.responseBody();
+  Serial.print("Response code: ");
+  Serial.println(responseCode);
+  Serial.print("Response body: ");
+  Serial.println(responseBody);
+}
+
+void postData(HttpClient catalogClient, String path, String body) {
+  catalogClient.beginRequest();
+  catalogClient.post(path);
+  catalogClient.sendHeader("Content-Type", "application/json");
+  catalogClient.sendHeader("Content-Length", body.length());
+  catalogClient.beginBody();
+  catalogClient.print(body);
+  catalogClient.endRequest();
+}
+
 void reconnect() {
-  while (client.state() != MQTT_CONNECTED) {
-    if (client.connect("TiotGroup8")) {
-      client.subscribe((base_topic + String("/led")).c_str());
+  while (mqttClient.state() != MQTT_CONNECTED) {
+    if (mqttClient.connect("TiotGroup8")) {
+      mqttClient.subscribe((mqtt_base_topic + String("/resources/led")).c_str());
     } else {
       Serial.print("failed, rc=");
-      Serial.print(client.state());
+      Serial.print(mqttClient.state());
       Serial.println(" try again in 5 seconds...");
       delay(5000);
     }
@@ -94,19 +168,19 @@ void reconnect() {
 }
 
 void loop() {
-  if (client.state() != MQTT_CONNECTED) {
+  registerDevice();
+  if (mqttClient.state() != MQTT_CONNECTED) {
     reconnect();
   }
   Serial.println("Reading temperature...");
   float temperature = readTemp(pinTempSensor);
   String body = senMlEncode(temperature);
-  
+
   Serial.println("Publishing data to broker...");
-  client.publish((base_topic + String("/temperature")).c_str(), body.c_str());
-  
+  mqttClient.publish((mqtt_base_topic + String("/resources/temperature")).c_str(), body.c_str());
+
   Serial.println("Checking for new messages on subscribed topics...");
-  client.loop();
+  mqttClient.loop();
 
   delay(10000);
 }
-

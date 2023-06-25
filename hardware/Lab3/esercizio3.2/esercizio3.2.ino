@@ -12,19 +12,19 @@ HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServer
 
 int registrationTime = -1;
 const int registerTimeout = 60000;
-const int B = 4275;               // B value of the thermistor
-const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
-const int capacity2 = JSON_OBJECT_SIZE(4) + JSON_ARRAY_SIZE(2) + JSON_OBJECT_SIZE(5) + 100;
-const int capacity3 = JSON_OBJECT_SIZE(1) + 100;
+const int B = 4275; // B value of the thermistor
+const int capacity = 256;
+String subscriptionAddress;
 DynamicJsonDocument jsonResponse(capacity);
 DynamicJsonDocument deviceData(capacity);
-DynamicJsonDocument updateData(capacity3);
-
+DynamicJsonDocument updateData(capacity);
+DynamicJsonDocument subscriptionData(capacity);
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
-  
+  while (!Serial)
+    ;
+
   enable_WiFi();
   connect_WiFi(wifiSsid, wifiPass);
 
@@ -34,9 +34,9 @@ void setup() {
 float readTemp(int pin) {
   int a = analogRead(pinTempSensor);
 
-  float R = 1023.0/a-1.0;
-  float temperature = 1.0/(log(R)/B+1/298.15) - 273.15; // convert to temperature via datasheet
-  
+  float R = 1023.0 / a - 1.0;
+  float temperature = 1.0 / (log(R) / B + 1 / 298.15) - 273.15; // convert to temperature via datasheet
+
   Serial.print("temperature = ");
   Serial.println(temperature);
 
@@ -46,14 +46,25 @@ float readTemp(int pin) {
 String senMlEncode(float temperature) {
   String body;
   jsonResponse.clear();
-  jsonResponse["bn"] =  "ArduinoGroupX";
-  jsonResponse["e"][0]["t"] = int(millis()/1000);
-  jsonResponse["e"][0]["n"] = "temperature"; 
-  jsonResponse["e"][0]["v"] = temperature; 
-  jsonResponse["e"][0]["u"] = "Cel"; 
+  jsonResponse["bn"] = "ArduinoGroup8";
+  jsonResponse["e"][0]["t"] = int(millis() / 1000);
+  jsonResponse["e"][0]["n"] = "temperature";
+  jsonResponse["e"][0]["v"] = temperature;
+  jsonResponse["e"][0]["u"] = "Cel";
   serializeJson(jsonResponse, body);
 
   return body;
+}
+
+String getSubscription() {
+  catalogClient.beginRequest();
+  catalogClient.get("/");
+  int statusCode = catalogClient.responseStatusCode();
+  String response = catalogClient.responseBody();
+  subscriptionData.clear();
+  deserializeJson(subscriptionData, response);
+
+  return subscriptionData["subscriptions"]["REST"]["device"];
 }
 
 void registerDevice() {
@@ -77,12 +88,14 @@ void registerDevice() {
   } else {
     Serial.println("Registering device...");
     deviceData.clear();
-    deviceData["deviceID"] =  deviceId;
-    deviceData["endPoints"][0] = "/log";
-    deviceData["sensors"][0] = "Motion Sensor"; 
-    deviceData["sensors"][1] = "Temperature"; 
+    deviceData["deviceID"] = "ArduinoGroup8";
+    deviceData["endPoints"]["MQTT"]["Led"] = "resources/led";
+    deviceData["endPoints"]["MQTT"]["Temperature"] = "resources/temperature";
+    deviceData["availableResources"][0] = "Motion Sensor";
+    deviceData["availableResources"][1] = "Temperature";
+    deviceData["timestamp"] = timeNow;
     serializeJson(deviceData, body);
-    postData(catalogClient, "/device", body);
+    postData(catalogClient, subscriptionAddress, body);
   }
   registrationTime = timeNow;
   int responseCode = catalogClient.responseStatusCode();
