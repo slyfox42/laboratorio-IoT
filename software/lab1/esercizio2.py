@@ -34,7 +34,8 @@ class ConvertService(object):
                     self.logs.append(jsonBody)
                     return "Logs successfully posted."
                 else:
-                    raise cherrypy.HTTPError(400, "Body not in valid SenML format.")
+                    raise cherrypy.HTTPError(
+                        400, "Body not in valid SenML format.")
         else:
             raise cherrypy.HTTPError(404, "Not Found.")
 
@@ -43,7 +44,8 @@ class ConvertService(object):
         if len(path) != 4:
             print(len(path))
             print(path)
-            raise cherrypy.HTTPError(400, "Missing required parameters: originalUnit, value, targetUnit.")
+            raise cherrypy.HTTPError(
+                400, "Missing required parameters: originalUnit, value, targetUnit.")
 
         units = ["k", "c", "f"]
         # convert to lowercase and destructure list
@@ -99,9 +101,9 @@ if __name__ == '__main__':
         '/': {
             'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
             'tools.sessions.on': True, }
-        }
+    }
     cherrypy.tree.mount(ConvertService(), '/', conf)
     cherrypy.config.update({'server.socket_host': '0.0.0.0'})
-    cherrypy.config.update({'server.socket_port': 8080})
+    cherrypy.config.update({'server.socket_port': 8081})
     cherrypy.engine.start()
     cherrypy.engine.block()
