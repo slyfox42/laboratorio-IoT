@@ -2,10 +2,6 @@ import cherrypy
 import json
 import time
 
-# TO DO
-# Implement an additional feature of the Catalog to remove all the devices and services with “insert-timestamp” 
-# higher than two minutes. The Catalog has to take this action periodically (for example every 1 minute).
-
 
 class Catalog(object):
     exposed = True
