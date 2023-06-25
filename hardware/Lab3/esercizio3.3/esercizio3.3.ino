@@ -19,13 +19,12 @@ String mqtt_base_topic: "tiot/group8"
 const int B = 4275;
 int registrationTime = -1;
 const int registerTimeout = 60000;
-const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
-const int subscriptionCapacity = 256;
+const int capacity = 256;
 
 DynamicJsonDocument jsonReceived(capacity);
 DynamicJsonDocument jsonResponse(capacity);
 DynamicJsonDocument deviceData(capacity);
-DynamicJsonDocument subscriptionData(subscriptionCapacity);
+DynamicJsonDocument subscriptionData(capacity);
 
 void callback(char *topic, byte *payload, unsigned int length) {
   if (topic == (mqtt_base_topic + "/led")) {
@@ -130,10 +129,10 @@ void registerDevice() {
     getSubscription();
     deviceData.clear();
     deviceData["deviceID"] = deviceId;
-    deviceData["endPoints"][0] = "temperature";
-    deviceData["endPoints"][1] = "led";
-    deviceData["sensors"][0] = "Motion Sensor";
-    deviceData["sensors"][1] = "Temperature";
+    deviceData["endPoints"]["MQTT"]["Led"] = "resources/led";
+    deviceData["endPoints"]["MQTT"]["Temperature"] = "resources/temperature";
+    deviceData["availableResources"][0] = "Motion Sensor";
+    deviceData["availableResources"][1] = "Temperature";
     serializeJson(deviceData, body);
     mqttClient.publish(subscriptionAddress.c_str(), body.c_str());
   }
@@ -159,7 +158,7 @@ void postData(HttpClient mqttClient, String path, String body) {
 void reconnect() {
   while (mqttClient.state() != MQTT_CONNECTED) {
     if (mqttClient.connect("TiotGroup8")) {
-      mqttClient.subscribe((mqtt_base_topic + String("/led")).c_str());
+      mqttClient.subscribe((mqtt_base_topic + String("/resources/led")).c_str());
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
@@ -179,7 +178,7 @@ void loop() {
   String body = senMlEncode(temperature);
 
   Serial.println("Publishing data to broker...");
-  mqttClient.publish((mqtt_base_topic + String("/temperature")).c_str(), body.c_str());
+  mqttClient.publish((mqtt_base_topic + String("/resources/temperature")).c_str(), body.c_str());
 
   Serial.println("Checking for new messages on subscribed topics...");
   mqttClient.loop();

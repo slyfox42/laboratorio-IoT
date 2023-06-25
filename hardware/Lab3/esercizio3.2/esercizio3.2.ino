@@ -15,15 +15,12 @@ HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServer
 int registrationTime = -1;
 const int registerTimeout = 60000;
 const int B = 4275; // B value of the thermistor
-const int capacity = JSON_OBJECT_SIZE(2) + JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(4) + 100;
-const int capacity2 = JSON_OBJECT_SIZE(4) + JSON_ARRAY_SIZE(2) + JSON_OBJECT_SIZE(5) + 100;
-const int capacity3 = JSON_OBJECT_SIZE(1) + 100;
-const int subscriptionCapacity = 256;
+const int capacity = 256;
 String subscriptionAddress;
 DynamicJsonDocument jsonResponse(capacity);
 DynamicJsonDocument deviceData(capacity);
-DynamicJsonDocument updateData(capacity3);
-DynamicJsonDocument subscriptionData(subscriptionCapacity);
+DynamicJsonDocument updateData(capacity);
+DynamicJsonDocument subscriptionData(capacity);
 
 void setup() {
   Serial.begin(9600);
@@ -94,9 +91,10 @@ void registerDevice() {
     subscriptionAddress = getSubscription();
     deviceData.clear();
     deviceData["deviceID"] = deviceId;
-    deviceData["endPoints"][0] = "/temperature";
-    deviceData["sensors"][0] = "Motion Sensor";
-    deviceData["sensors"][1] = "Temperature";
+    deviceData["endPoints"]["MQTT"]["Led"] = "resources/led";
+    deviceData["endPoints"]["MQTT"]["Temperature"] = "resources/temperature";
+    deviceData["availableResources"][0] = "Motion Sensor";
+    deviceData["availableResources"][1] = "Temperature";
     serializeJson(deviceData, body);
     postData(catalogClient, subscriptionAddress, body);
   }
