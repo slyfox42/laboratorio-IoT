@@ -3,13 +3,8 @@ import json
 import time
 import paho.mqtt.client as PahoMQTT
 import uuid
+import threading
 
-
-# TO DOO
-# Implement an additional feature of the Catalog to remove all the devices and services with “insert-timestamp” 
-# higher than two minutes. The Catalog has to take this action periodically (for example every 1 minute).
-
-# INSERT ERROR MESSAGES
 
 class Catalog(object):
     exposed = True
@@ -26,6 +21,11 @@ class Catalog(object):
 
         self.topic = '/tiot/8/catalog/subscription/devices/subscription'
         self.messageBroker = 'mqtt.eclipseprojects.io'
+        
+        # start the cleanup thread
+        self.cleanup_thread = threading.Thread(target=self.cleanup)
+        self.cleanup_thread.start()
+
         
     def start (self):
         #manage connection to broker
@@ -73,7 +73,6 @@ class Catalog(object):
     def GET(self, *path, **query):
         
         if ((path[0] == "devices" or path[0] == "users" or path[0] == "services") and len(path) == 1):
-            print("ciao")
             return json.dumps(self.log[path[0]])
         elif (path[0] == "device" and len(path) == 2):
             return json.dumps(self.log["devices"][path[1]])
@@ -81,6 +80,14 @@ class Catalog(object):
             return json.dumps(self.log["users"][path[1]])
         elif (path[0] == "service" and len(path) == 2):
             return json.dumps(self.log["services"][path[1]])
+        elif ((path[0] != "device" or path[0] != "user" or path[0] != "service") and len(path) == 2):
+            raise cherrypy.HTTPError(400, "missing first parameter, it should be 'device','user' or 'service'")
+        elif ((path[0] == "device" or path[0] == "user" or path[0] == "service") and len(path) == 2):
+            raise cherrypy.HTTPError(400, "Wrong ID ")
+        elif ((path[0] == "devices" or path[0] == "users" or path[0] == "services") and len(path) == 0):
+            raise cherrypy.HTTPError(400, "missing first parameter, it should be 'devices','users' or 'services'")
+        elif (len(path) > 3):
+            raise cherrypy.HTTPError(400, "Too many parameters")
 
             
         return ("Params: %s %s; params length %s" % (str(path), str (query), len(query)))
@@ -97,7 +104,7 @@ class Catalog(object):
             device = {
             "deviceID": data['deviceID'],
             "endPoints": data["endPoints"],
-            "availableResources": data["sensors"],
+            "availableResources": data["availableResources"],
             "timestamp": time.time()
             }
             self.log["devices"][data['deviceID']] = device
@@ -120,6 +127,10 @@ class Catalog(object):
             }
             self.log["services"][data['serviceID']] = service
             return json.dumps(service)
+        elif (len(path) > 1):
+            raise cherrypy.HTTPError(400, "Too many parameters should just be just, /device, /user or /service")
+        elif (len(path) == 1):
+            raise cherrypy.HTTPError(400, "Wrong parameter parameter, it should be, /device, /user or /service")
         
         return "ERROR" #(f"Path len {len(path)} {path[0]} ")
     
@@ -133,13 +144,13 @@ class Catalog(object):
             deviceID = path[1]
             if deviceID in self.log["devices"]:
                 self.log["devices"][deviceID]["endPoints"] = data["endPoints"]
-                self.log["devices"][deviceID]["availableResources"] = data["sensors"]
+                self.log["devices"][deviceID]["availableResources"] = data["availableResources"]
                 self.log["devices"][deviceID]["timestamp"] = time.time()  # Update the timestamp
                 return json.dumps(self.log["devices"][deviceID])
             else:
-                return "Device not found"
+                raise cherrypy.HTTPError(400, "Device not found")
         else:
-            return "Invalid path"
+            raise cherrypy.HTTPError(400, "Invalid path")
 
 
 if __name__ == '__main__':
@@ -160,6 +171,7 @@ if __name__ == '__main__':
     cherrypy.config.update({'server.socket_port': 8080})
 
     cherrypy.engine.start()
+    
     cherrypy.engine.block()
 
     
