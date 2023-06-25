@@ -3,6 +3,7 @@ import requests
 import json
 
 resourceCatalogAddress = "http://localhost:8080"
+arduinoID = "arduinoGroup8"
 
 
 def onConnect(client, userdata, flags, rc):
@@ -27,9 +28,7 @@ class MQTTSubscriber:
         response = requests.get(f'{resourceCatalogAddress}/')
 
         if response.status_code != 200:
-            print("Unable to retrieve available subscriptions from catalog!")
-            print(response.status_code)
-            return
+            response.raise_for_status()
 
         print("Fetched available subscriptions!")
         jsonData = response.json()
@@ -46,9 +45,7 @@ class MQTTSubscriber:
         response = requests.post(serviceAddress, json.dumps(serviceData))
 
         if response.status_code != 200:
-            print("Error: Unable to register as service to the catalog!")
-            print(response.status_code)
-            return
+            response.raise_for_status()
 
         print("Successfully registered as service!")
 
@@ -59,20 +56,16 @@ class MQTTSubscriber:
         response = requests.get(f'{resourceCatalogAddress}/devices')
 
         if response.status_code != 200:
-            print("Error: Unable to get devices list!")
-            print(response.status_code)
-            return
+            response.raise_for_status()
 
         jsonData = response.json()
-        deviceList = list(jsonData)
-        deviceID = jsonData[deviceList[0]]["deviceID"]
+        if arduinoID not in jsonData.keys():
+            raise Exception("Error: Arduino device not registered to catalog!!")
 
-        response = requests.get(f'{resourceCatalogAddress}/devices/{deviceID}')
+        response = requests.get(f'{resourceCatalogAddress}/devices/{arduinoID}')
 
         if response.status_code != 200:
-            print("Error: Unable to get device data!")
-            print(response.status_code)
-            return
+            response.raise_for_status()
 
         jsonData = response.json()
 
@@ -82,8 +75,8 @@ class MQTTSubscriber:
         mqttAttributes = subscriptions["MQTT"]["device"]
         self.client.connect(mqttAttributes["hostname"], mqttAttributes["port"])
         self.client.loop_start()
-        for endpoint in endpoints:
-            self.client.subscribe(f'{mqttAttributes["topic"]}/{endpoint}', 2)
+
+        self.client.subscribe(endpoints["MQTT"]["temperature"])
 
 
 if __name__ == "main":

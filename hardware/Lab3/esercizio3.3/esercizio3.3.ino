@@ -9,7 +9,6 @@
 #define pinTempSensor A0
 #define ledPin A2
 
-UUID uuid;
 WiFiClient wifi;
 HttpClient catalogClient = HttpClient(wifi, serverAddress, serverPort);
 PubSubClient mqttClient(wifi);
@@ -115,7 +114,7 @@ String getSubscription() {
 void registerDevice() {
   int timeNow = millis();
   String body;
-  String deviceId = uuid.toCharArray();
+  String deviceId = "arduinoGroup8";
   if (registrationTime != -1) {
     if ((timeNow - registrationTime) < registerTimeout) {
       return;

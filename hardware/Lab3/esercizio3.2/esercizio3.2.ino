@@ -7,7 +7,6 @@
 
 #define pinTempSensor A0
 
-UUID uuid;
 WiFiClient wifi;
 HttpClient catalogClient = HttpClient(wifi, serverAddress, catalogServerPort);
 HttpClient temperatureClient = HttpClient(wifi, serverAddress, temperatureServerPort);
@@ -71,7 +70,7 @@ String getSubscription() {
 void registerDevice() {
   int timeNow = millis();
   String body;
-  String deviceId = uuid.toCharArray();
+  String deviceId = "arduinoGroup8";
   if (registrationTime != -1) {
     if ((timeNow - registrationTime) < registerTimeout) {
       return;
