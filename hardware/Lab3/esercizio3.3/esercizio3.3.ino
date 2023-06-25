@@ -15,7 +15,7 @@ HttpClient catalogClient = HttpClient(wifi, serverAddress, serverPort);
 PubSubClient mqttClient(wifi);
 
 String subscriptionAddress;
-String mqtt_base_topic;
+String mqtt_base_topic: "tiot/group8"
 const int B = 4275;
 int registrationTime = -1;
 const int registerTimeout = 60000;
@@ -87,6 +87,15 @@ float readTemp(int pin) {
 }
 
 // get available subscriptions from Catalog
+// "subscription": {
+//   "MQTT": {
+//     "device": {
+//       "hostname": "test.mosquitto.org",
+//       "port": "1883",
+//       "topic": "tiot/group8/catalog/devices/subscription"
+//     }
+//   }
+// }
 String getSubscription() {
   catalogClient.beginRequest();
   catalogClient.get("/");
@@ -95,10 +104,9 @@ String getSubscription() {
   subscriptionData.clear();
   deserializeJson(subscriptionData, response);
 
-  subscriptionAddress = subscriptionData["subscriptions"]["REST"]["device"].as<String>(); // needed to remove ambiguity when extracting data from json
-  String broker_address = subscriptionData["subscriptions"]["MQTT"]["hostname"];
-  int broker_port = subscriptionData["subscriptions"]["MQTT"]["port"];
-  mqtt_base_topic = subscriptionData["subscriptions"]["MQTT"]["topic"].as<String>();
+  subscriptionAddress = subscriptionData["subscriptions"]["MQTT"]["device"]["topic"].as<String>(); // needed to remove ambiguity when extracting data from json
+  String broker_address = subscriptionData["subscriptions"]["MQTT"]["device"]["hostname"];
+  int broker_port = subscriptionData["subscriptions"]["MQTT"]["device"]["port"];
 
   mqttClient.setServer(broker_address.c_str(), broker_port);
   mqttClient.setCallback(callback);
@@ -116,23 +124,18 @@ void registerDevice() {
     Serial.println("Refreshing device registration...");
     serializeJson(deviceData, body);
 
-    catalogClient.beginRequest();
-    catalogClient.put(subscriptionAddress);
-    catalogClient.sendHeader("Content-Type", "application/json");
-    catalogClient.sendHeader("Content-Length", body.length());
-    catalogClient.beginBody();
-    catalogClient.print(body);
-    catalogClient.endRequest();
+    mqttClient.publish(subscriptionAddress.c_str(), body.c_str());
   } else {
     Serial.println("Registering device...");
     getSubscription();
     deviceData.clear();
     deviceData["deviceID"] = deviceId;
-    deviceData["endPoints"][0] = "/temperature";
+    deviceData["endPoints"][0] = "temperature";
+    deviceData["endPoints"][1] = "led";
     deviceData["sensors"][0] = "Motion Sensor";
     deviceData["sensors"][1] = "Temperature";
     serializeJson(deviceData, body);
-    postData(catalogClient, subscriptionAddress, body);
+    mqttClient.publish(subscriptionAddress.c_str(), body.c_str());
   }
   registrationTime = timeNow;
   int responseCode = catalogClient.responseStatusCode();
