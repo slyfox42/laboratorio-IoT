@@ -51,11 +51,14 @@ LiquidCrystal_PCF8574 lcd(0x20);
 
 /*
 Abbiamo deciso di portare nel cloud
-changeThreshold: in questo modo la modifica delle soglie può essere più agevole dal lato utente, soprattutto nel caso si volessero modificare determinati parametri o si volessero applicare le modifiche a più dispositivi contemporaneamente
+changeThreshold: in questo modo la modifica delle soglie può essere più agevole dal lato utente,
+soprattutto nel caso si volessero modificare determinati parametri o si volessero applicare
+le modifiche a più dispositivi contemporaneamente
 
 Abbiamo deciso di mantenere nell'Arduino
 Sensing
-Calcolo della temperatura: essendo l'esito del calcolo potenzialmente utile anche per altre funzioni, abbiamo ritenuto conveniente mantenerlo nello skecth
+Calcolo della temperatura: essendo l'esito del calcolo potenzialmente utile anche per altre funzioni,
+abbiamo ritenuto conveniente mantenerlo nello sketch
 Conteggio delle persone tramite movimento/suono: per limitare il numero di dati che vengono inviati al cloud.
 Parte del display su LCD: per avere un caso di default
 */

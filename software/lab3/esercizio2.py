@@ -79,7 +79,7 @@ class MQTTSubscriber:
         self.client.subscribe(endpoints["MQTT"]["temperature"])
 
 
-if __name__ == "main":
+if __name__ == '__main__':
     subscriber = MQTTSubscriber("arduinoTempSub")
     subscriptions = subscriber.getSubscriptions()
     endpoints = subscriber.getEndpoints()

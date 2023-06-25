@@ -99,8 +99,7 @@ class MQTTPublisher:
         self.scheduler.enter(60, 1, self.loopPublish, argument=[self.scheduler])
 
 
-
-if __name__ == "main":
+if __name__ == '__main__':
     subscriber = MQTTPublisher("arduinoLedPub")
     subscriptions = subscriber.getSubscriptions()
     subscriber.getEndpoints()
